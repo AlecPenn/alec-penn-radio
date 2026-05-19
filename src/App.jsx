@@ -272,6 +272,11 @@ const PLAYLISTS = {
 };
 const DEFAULT_PLAYLIST = "PLmNBbWRYKMij00GHXkVmWKWOkjGHvkZUO";
 
+// Verify genre to playlist mapping is correct
+function getPlaylist(genre) {
+  return PLAYLISTS[genre] || DEFAULT_PLAYLIST;
+}
+
 function YouTubeRadio({ playing, onTrackChange, playlistId }) {
   const playerRef = useRef(null);
   const playerInstanceRef = useRef(null);
@@ -375,6 +380,7 @@ export default function AlecPennRadio() {
   const [loadingYT,setLoadingYT] = useState(true);
   const [menuOpen,setMenuOpen] = useState(false);
   const [nowPlaying,setNowPlaying] = useState(null);
+  const [activePlaylist,setActivePlaylist] = useState(DEFAULT_PLAYLIST);
   const freqRef = useRef(null);
 
   useEffect(() => { const t=setTimeout(()=>setSealReady(true),500); return ()=>clearTimeout(t); },[]);
@@ -695,6 +701,7 @@ export default function AlecPennRadio() {
                   <button key={g} onClick={()=>{
                     const newGenre = g===genre?"All":g;
                     setGenre(newGenre);
+                    setActivePlaylist(getPlaylist(newGenre));
                     if (!tuned) handleTuneIn();
                   }}
                     style={{ background:genre===g?C.teal:"transparent",
@@ -908,7 +915,7 @@ export default function AlecPennRadio() {
         </div>
       </section>
 
-      <YouTubeRadio playing={tuned} onTrackChange={setNowPlaying} playlistId={PLAYLISTS[genre] || DEFAULT_PLAYLIST}/>
+      <YouTubeRadio playing={tuned} onTrackChange={setNowPlaying} playlistId={activePlaylist}/>
 
       {/* ── FOOTER ── */}
       <footer style={{ borderTop:`1px solid ${C.deepGold}18`,
