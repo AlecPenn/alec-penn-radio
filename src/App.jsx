@@ -11,6 +11,16 @@ const C = {
 const YT = "https://www.youtube.com/@AlecPennRadio";
 const GENRES = ["All","Lo-Fi","Hip Hop","Ambient","Jazz","Electronic","Soul","Classical","World"];
 
+function useIsMobile() {
+  const [mobile, setMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const fn = () => setMobile(window.innerWidth < 768);
+    window.addEventListener("resize", fn);
+    return () => window.removeEventListener("resize", fn);
+  }, []);
+  return mobile;
+}
+
 function WaveSeal({ size=44, color=C.gold, glow=false }) {
   return (
     <svg viewBox="0 0 1000 1000" width={size} height={size}
@@ -66,7 +76,7 @@ function ParticleField({ active }) {
     const W = canvas.offsetWidth || 800;
     const H = canvas.offsetHeight || 400;
     canvas.width = W; canvas.height = H;
-    const particles = Array.from({ length:55 }, () => ({
+    const particles = Array.from({ length:40 }, () => ({
       x:Math.random()*W, y:Math.random()*H,
       vx:(Math.random()-0.5)*0.3, vy:(Math.random()-0.5)*0.3,
       size:Math.random()*1.4+0.3,
@@ -132,10 +142,10 @@ function Oscilloscope({ active }) {
     draw();
     return () => cancelAnimationFrame(animRef.current);
   }, [active]);
-  return <canvas ref={canvasRef} width={220} height={48}
+  return <canvas ref={canvasRef} width={180} height={44}
     style={{ display:"block", borderRadius:4,
       border:`1px solid ${active?C.sageTeal+"44":C.deepGold+"18"}`,
-      background:"#030201", transition:"border-color 0.5s" }}/>;
+      background:"#030201", transition:"border-color 0.5s", maxWidth:"100%" }}/>;
 }
 
 function Cursor() {
@@ -185,15 +195,15 @@ function ChartRow({ item, rank }) {
   return (
     <div onClick={()=>window.open(`https://youtube.com/watch?v=${videoId}`,"_blank")}
       onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
-      style={{ display:"grid",gridTemplateColumns:"32px 1fr auto auto",alignItems:"center",
-        gap:12,padding:"11px 16px",borderBottom:`1px solid ${C.deepBurgundy}44`,
+      style={{ display:"grid",gridTemplateColumns:"28px 1fr auto auto",alignItems:"center",
+        gap:10,padding:"11px 14px",borderBottom:`1px solid ${C.deepBurgundy}44`,
         cursor:"pointer",background:hov?`${C.deepBurgundy}44`:"transparent",transition:"background 0.15s" }}>
-      <span style={{ color:C.deepGold,fontSize:13,fontFamily:"monospace",fontWeight:600 }}>{String(rank).padStart(2,"0")}</span>
-      <div>
-        <div style={{ color:C.cream,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:220 }}>{title}</div>
-        <div style={{ color:C.sageTeal,fontSize:11,marginTop:2 }}>{genre}</div>
+      <span style={{ color:C.deepGold,fontSize:12,fontFamily:"monospace",fontWeight:600 }}>{String(rank).padStart(2,"0")}</span>
+      <div style={{ minWidth:0 }}>
+        <div style={{ color:C.cream,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{title}</div>
+        <div style={{ color:C.sageTeal,fontSize:10,marginTop:2 }}>{genre}</div>
       </div>
-      <span style={{ color:C.dustyRose,fontSize:11 }}>{views}</span>
+      <span style={{ color:C.dustyRose,fontSize:10 }}>{views}</span>
       <span style={{ color:hov?C.gold:C.deepGold,fontSize:16,transition:"color 0.15s" }}>›</span>
     </div>
   );
@@ -209,13 +219,13 @@ function ShortCard({ item }) {
       onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
       style={{ background:`linear-gradient(160deg,${C.deepBurgundy},${C.black})`,
         border:`1px solid ${hov?C.roseMaroon:C.burgundy+"55"}`,borderRadius:8,
-        padding:"20px 16px",cursor:"pointer",
-        transform:hov?"translateY(-5px)":"translateY(0)",
-        boxShadow:hov?`0 14px 36px ${C.deepBurgundy}99`:"none",
+        padding:"18px 14px",cursor:"pointer",
+        transform:hov?"translateY(-4px)":"translateY(0)",
+        boxShadow:hov?`0 12px 30px ${C.deepBurgundy}99`:"none",
         transition:"all 0.22s cubic-bezier(0.34,1.56,0.64,1)",
         display:"flex",flexDirection:"column",gap:8 }}>
-      <div style={{ fontSize:22,color:C.roseMaroon }}>▶</div>
-      <div style={{ color:C.cream,fontSize:13,fontWeight:500,lineHeight:1.3,
+      <div style={{ fontSize:20,color:C.roseMaroon }}>▶</div>
+      <div style={{ color:C.cream,fontSize:12,fontWeight:500,lineHeight:1.3,
         overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",
         WebkitLineClamp:2,WebkitBoxOrient:"vertical" }}>{title}</div>
       <div style={{ display:"flex",alignItems:"center",gap:6 }}>
@@ -230,19 +240,19 @@ function FrequencyDial({ genre, onChange }) {
   const angle = (GENRES.indexOf(genre)/(GENRES.length-1))*180-90;
   return (
     <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:8 }}>
-      <div style={{ width:70,height:70,borderRadius:"50%",
+      <div style={{ width:60,height:60,borderRadius:"50%",
         border:`2px solid ${C.gold}`,background:`radial-gradient(circle at 30% 30%,#1a1208,${C.black})`,
-        position:"relative",cursor:"pointer",boxShadow:`0 0 22px ${C.deepGold}55` }}>
-        <div style={{ width:2,height:28,background:C.gold,borderRadius:1,
+        position:"relative",cursor:"pointer",boxShadow:`0 0 18px ${C.deepGold}55` }}>
+        <div style={{ width:2,height:22,background:C.gold,borderRadius:1,
           transformOrigin:"bottom center",transform:`rotate(${angle}deg)`,
           position:"absolute",bottom:"50%",left:"calc(50% - 1px)",
           transition:"transform 0.4s cubic-bezier(0.34,1.56,0.64,1)" }}/>
-        <div style={{ width:8,height:8,borderRadius:"50%",background:C.gold,
-          position:"absolute",bottom:"calc(50% - 4px)",left:"calc(50% - 4px)" }}/>
+        <div style={{ width:6,height:6,borderRadius:"50%",background:C.gold,
+          position:"absolute",bottom:"calc(50% - 3px)",left:"calc(50% - 3px)" }}/>
       </div>
       <select value={genre} onChange={e=>onChange(e.target.value)}
         style={{ background:"transparent",border:`1px solid ${C.deepGold}`,
-          color:C.paleGold,fontSize:11,padding:"3px 8px",borderRadius:4,
+          color:C.paleGold,fontSize:10,padding:"3px 6px",borderRadius:4,
           cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.06em" }}>
         {GENRES.map(g=><option key={g} value={g} style={{ background:C.black }}>{g}</option>)}
       </select>
@@ -250,7 +260,84 @@ function FrequencyDial({ genre, onChange }) {
   );
 }
 
+// YouTube Radio Player
+const PLAYLIST_ID = "PLmNBbWRYKMij00GHXkVmWKWOkjGHvkZUO";
+
+function YouTubeRadio({ playing, onTrackChange }) {
+  const playerRef = useRef(null);
+  const playerInstanceRef = useRef(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    // Load YouTube IFrame API
+    if (!window.YT) {
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      document.head.appendChild(tag);
+    }
+
+    const initPlayer = () => {
+      if (!playerRef.current) return;
+      playerInstanceRef.current = new window.YT.Player(playerRef.current, {
+        height: "1",
+        width: "1",
+        playerVars: {
+          listType: "playlist",
+          list: PLAYLIST_ID,
+          autoplay: 0,
+          controls: 0,
+          enablejsapi: 1,
+          origin: window.location.origin,
+          shuffle: 1,
+        },
+        events: {
+          onReady: (e) => {
+            setReady(true);
+            e.target.setShuffle(true);
+          },
+          onStateChange: (e) => {
+            if (e.data === window.YT.PlayerState.PLAYING) {
+              const data = playerInstanceRef.current?.getVideoData?.();
+              if (data?.title) onTrackChange(data.title);
+            }
+            if (e.data === window.YT.PlayerState.ENDED) {
+              playerInstanceRef.current?.nextVideo?.();
+            }
+          },
+        },
+      });
+    };
+
+    if (window.YT && window.YT.Player) {
+      initPlayer();
+    } else {
+      window.onYouTubeIframeAPIReady = initPlayer;
+    }
+
+    return () => {
+      playerInstanceRef.current?.destroy?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!ready || !playerInstanceRef.current) return;
+    if (playing) {
+      playerInstanceRef.current.setShuffle?.(true);
+      playerInstanceRef.current.playVideo?.();
+    } else {
+      playerInstanceRef.current.pauseVideo?.();
+    }
+  }, [playing, ready]);
+
+  return (
+    <div style={{ position:"fixed", bottom:0, left:0, width:1, height:1, opacity:0, pointerEvents:"none", zIndex:-1 }}>
+      <div ref={playerRef}/>
+    </div>
+  );
+}
+
 export default function AlecPennRadio() {
+  const mobile = useIsMobile();
   const [tuned,setTuned] = useState(false);
   const [tuning,setTuning] = useState(false);
   const [showStatic,setShowStatic] = useState(false);
@@ -262,6 +349,8 @@ export default function AlecPennRadio() {
   const [latestVideo,setLatestVideo] = useState(null);
   const [shorts,setShorts] = useState([]);
   const [loadingYT,setLoadingYT] = useState(true);
+  const [menuOpen,setMenuOpen] = useState(false);
+  const [nowPlaying,setNowPlaying] = useState(null);
   const freqRef = useRef(null);
 
   useEffect(() => { const t=setTimeout(()=>setSealReady(true),500); return ()=>clearTimeout(t); },[]);
@@ -282,22 +371,17 @@ export default function AlecPennRadio() {
     return ()=>clearTimeout(freqRef.current);
   },[tuned]);
 
-  // Fetch real YouTube data
   useEffect(() => {
     async function fetchData() {
       setLoadingYT(true);
       try {
         const [top, latest, sh] = await Promise.all([
-          getTopVideos(),
-          getLatestVideos(),
-          getTopShorts(),
+          getTopVideos(), getLatestVideos(), getTopShorts(),
         ]);
         setTopVideos(top);
         setLatestVideo(latest[0] || null);
         setShorts(sh);
-      } catch(e) {
-        console.error(e);
-      }
+      } catch(e) { console.error(e); }
       setLoadingYT(false);
     }
     fetchData();
@@ -305,7 +389,7 @@ export default function AlecPennRadio() {
 
   const handleTuneIn = useCallback(()=>{
     if (tuning) return;
-    if (tuned) { setTuned(false); return; }
+    if (tuned) { setTuned(false); setNowPlaying(null); return; }
     setTuning(true); setShowStatic(true);
     let f=88.0;
     const sweep = setInterval(()=>{
@@ -321,287 +405,398 @@ export default function AlecPennRadio() {
   const timeStr = now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
   const latestTitle = latestVideo?.snippet?.title || "Loading latest drop...";
   const latestId = latestVideo?.id?.videoId || "";
+  const pad = mobile ? "16px" : "32px";
 
   return (
-    <div style={{ minHeight:"100vh",background:C.black,color:C.cream,
-      fontFamily:"'Georgia','Times New Roman',serif",cursor:"none" }}>
+    <div style={{ minHeight:"100vh", background:C.black, color:C.cream,
+      fontFamily:"'Georgia','Times New Roman',serif",
+      cursor: mobile ? "auto" : "none",
+      overflowX:"hidden" }}>
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
-        ::-webkit-scrollbar{width:4px;}
-        ::-webkit-scrollbar-track{background:${C.black};}
-        ::-webkit-scrollbar-thumb{background:${C.deepGold};border-radius:2px;}
+        html,body{width:100%;overflow-x:hidden;background:#0A0806;}
+        ::-webkit-scrollbar{width:3px;}
+        ::-webkit-scrollbar-track{background:#0A0806;}
+        ::-webkit-scrollbar-thumb{background:#9E7F35;border-radius:2px;}
         @keyframes vu-bounce{from{height:4px;}to{height:34px;}}
         @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.15}}
         @keyframes freq-flicker{0%,100%{opacity:1}93%{opacity:0.82}95%{opacity:1}}
         @keyframes scanline{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
         @keyframes static-flash{0%{opacity:1}100%{opacity:0}}
         @keyframes on-air-blink{0%,49%{opacity:1}50%,99%{opacity:0}}
-        @keyframes glow-pulse{0%,100%{box-shadow:0 0 20px ${C.teal}44}50%{box-shadow:0 0 44px ${C.teal}88}}
+        @keyframes glow-pulse{0%,100%{box-shadow:0 0 20px #2F6F6D44}50%{box-shadow:0 0 44px #2F6F6D88}}
         @keyframes horizon-scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-        .nav-link{color:${C.warmGold};text-decoration:none;font-size:12px;letter-spacing:0.1em;
+        .nav-link{color:#D4B96A;text-decoration:none;font-size:12px;letter-spacing:0.1em;
           text-transform:uppercase;transition:color 0.15s;font-family:'JetBrains Mono',monospace;}
-        .nav-link:hover{color:${C.gold};}
+        .nav-link:hover{color:#C2A24D;}
       `}</style>
 
-      <Cursor/>
+      {!mobile && <Cursor/>}
       <StaticFlash show={showStatic}/>
 
-      <div style={{ position:"fixed",inset:0,pointerEvents:"none",zIndex:100,overflow:"hidden",opacity:0.022 }}>
+      {/* Scanline */}
+      <div style={{ position:"fixed",inset:0,pointerEvents:"none",zIndex:100,overflow:"hidden",opacity:0.02 }}>
         <div style={{ width:"100%",height:2,background:C.cream,animation:"scanline 9s linear infinite" }}/>
       </div>
 
+      {/* Ambient bg */}
       <div style={{ position:"fixed",inset:0,pointerEvents:"none",zIndex:0,
         background: tuned
-          ? `radial-gradient(ellipse 80% 50% at 50% 0%,${C.teal}1a 0%,transparent 70%),radial-gradient(ellipse 50% 40% at 85% 100%,${C.deepBurgundy}28 0%,transparent 60%)`
-          : `radial-gradient(ellipse 60% 40% at 50% 0%,${C.deepGold}0a 0%,transparent 70%)`,
+          ? `radial-gradient(ellipse 80% 50% at 50% 0%,${C.teal}18 0%,transparent 70%)`
+          : `radial-gradient(ellipse 60% 40% at 50% 0%,${C.deepGold}08 0%,transparent 70%)`,
         transition:"background 1.8s ease" }}/>
 
-      {/* NAV */}
+      {/* ── NAV ── */}
       <nav style={{ position:"sticky",top:0,zIndex:50,
-        background:`${C.black}f2`,backdropFilter:"blur(14px)",
-        borderBottom:`1px solid ${tuned?C.teal+"55":C.deepGold+"22"}`,
-        padding:"0 32px",display:"flex",alignItems:"center",justifyContent:"space-between",
-        height:60,transition:"border-color 0.7s" }}>
-        <div style={{ display:"flex",alignItems:"center",gap:12 }}>
-          <WaveSeal size={48} color={C.gold} glow={tuned}/>
+        background:`${C.black}f5`,backdropFilter:"blur(14px)",
+        borderBottom:`1px solid ${tuned?C.teal+"44":C.deepGold+"22"}`,
+        padding:`0 ${pad}`,display:"flex",alignItems:"center",justifyContent:"space-between",
+        height: mobile ? 52 : 60, transition:"border-color 0.7s" }}>
+
+        {/* Logo */}
+        <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+          <WaveSeal size={mobile?38:46} color={C.gold} glow={tuned}/>
           <div style={{ display:"flex",flexDirection:"column",gap:0,lineHeight:1 }}>
-            <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:C.cream,letterSpacing:"0.14em" }}>ALEC PENN</span>
-            <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:C.gold,letterSpacing:"0.3em" }}>RADIO</span>
+            <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:mobile?15:18,color:C.cream,letterSpacing:"0.14em" }}>ALEC PENN</span>
+            <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:mobile?11:13,color:C.gold,letterSpacing:"0.28em" }}>RADIO</span>
           </div>
-          <div style={{ width:7,height:7,borderRadius:"50%",marginLeft:4,
+          <div style={{ width:6,height:6,borderRadius:"50%",marginLeft:4,
             background:tuned?C.sageTeal:C.roseMaroon,
             animation:tuned?"on-air-blink 1.4s step-end infinite":"none",
-            boxShadow:tuned?`0 0 8px ${C.sageTeal}`:"none",
+            boxShadow:tuned?`0 0 7px ${C.sageTeal}`:"none",
             transition:"background 0.5s,box-shadow 0.5s" }}/>
         </div>
-        <div style={{ flex:1,margin:"0 28px",overflow:"hidden",height:18 }}>
-          <div style={{ display:"flex",gap:36,whiteSpace:"nowrap",
-            animation:"horizon-scroll 22s linear infinite",width:"max-content" }}>
-            {[...GENRES,...GENRES].map((g,i)=>(
-              <span key={i} onClick={()=>setGenre(g)}
-                style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:10,
-                  color:g===genre?C.gold:C.deepGold+"55",letterSpacing:"0.14em",
-                  cursor:"pointer",transition:"color 0.2s" }}>{g}</span>
-            ))}
+
+        {/* Desktop nav */}
+        {!mobile && (
+          <>
+            <div style={{ flex:1,margin:"0 28px",overflow:"hidden",height:18 }}>
+              <div style={{ display:"flex",gap:36,whiteSpace:"nowrap",
+                animation:"horizon-scroll 22s linear infinite",width:"max-content" }}>
+                {[...GENRES,...GENRES].map((g,i)=>(
+                  <span key={i} onClick={()=>setGenre(g)}
+                    style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:10,
+                      color:g===genre?C.gold:C.deepGold+"55",letterSpacing:"0.14em",
+                      cursor:"pointer",transition:"color 0.2s" }}>{g}</span>
+                ))}
+              </div>
+            </div>
+            <div style={{ display:"flex",gap:20,alignItems:"center" }}>
+              <a href="#broadcast" className="nav-link">Broadcast</a>
+              <a href="#charts" className="nav-link">Charts</a>
+              <a href="#mission" className="nav-link">Mission</a>
+              <a href={YT} target="_blank" rel="noreferrer"
+                style={{ background:C.burgundy,color:C.cream,padding:"5px 14px",borderRadius:4,
+                  fontSize:11,letterSpacing:"0.08em",textDecoration:"none",textTransform:"uppercase",
+                  fontFamily:"'JetBrains Mono',monospace",border:`1px solid ${C.roseMaroon}` }}>
+                YouTube ↗
+              </a>
+              <div style={{ display:"flex",gap:0,marginLeft:4 }}>
+                {[{l:"─"},{l:"□"},{l:"✕"}].map((b,i)=>(
+                  <div key={i} style={{ width:32,height:24,display:"flex",alignItems:"center",
+                    justifyContent:"center",fontSize:i===2?11:13,color:C.warmGold,cursor:"default",
+                    borderLeft:`1px solid ${C.deepGold}22`,userSelect:"none",transition:"background 0.1s" }}
+                    onMouseEnter={e=>e.currentTarget.style.background=i===2?"#8B1A1A":`${C.deepGold}22`}
+                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>{b.l}</div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Mobile hamburger */}
+        {mobile && (
+          <div style={{ display:"flex",alignItems:"center",gap:12 }}>
+            <a href={YT} target="_blank" rel="noreferrer"
+              style={{ background:C.burgundy,color:C.cream,padding:"4px 12px",borderRadius:4,
+                fontSize:10,letterSpacing:"0.08em",textDecoration:"none",
+                fontFamily:"'JetBrains Mono',monospace",border:`1px solid ${C.roseMaroon}` }}>
+              YT ↗
+            </a>
+            <button onClick={()=>setMenuOpen(o=>!o)}
+              style={{ background:"transparent",border:`1px solid ${C.deepGold}44`,
+                color:C.warmGold,padding:"6px 10px",borderRadius:4,cursor:"pointer",
+                fontFamily:"'JetBrains Mono',monospace",fontSize:14 }}>
+              {menuOpen?"✕":"≡"}
+            </button>
           </div>
-        </div>
-        <div style={{ display:"flex",gap:22,alignItems:"center" }}>
-          <a href="#broadcast" className="nav-link">Broadcast</a>
-          <a href="#charts" className="nav-link">Charts</a>
-          <a href="#mission" className="nav-link">Mission</a>
-          <a href={YT} target="_blank" rel="noreferrer"
-            style={{ background:C.burgundy,color:C.cream,padding:"5px 14px",borderRadius:4,
-              fontSize:11,letterSpacing:"0.08em",textDecoration:"none",textTransform:"uppercase",
-              fontFamily:"'JetBrains Mono',monospace",border:`1px solid ${C.roseMaroon}` }}>
-            YouTube ↗
-          </a>
-          <div style={{ display:"flex",gap:0,marginLeft:4 }}>
-            {[{l:"─"},{l:"□"},{l:"✕"}].map((b,i)=>(
-              <div key={i} style={{ width:32,height:24,display:"flex",alignItems:"center",
-                justifyContent:"center",fontSize:i===2?11:13,color:C.warmGold,cursor:"default",
-                borderLeft:`1px solid ${C.deepGold}22`,userSelect:"none",transition:"background 0.1s" }}
-                onMouseEnter={e=>e.currentTarget.style.background=i===2?"#8B1A1A":`${C.deepGold}22`}
-                onMouseLeave={e=>e.currentTarget.style.background="transparent"}>{b.l}</div>
-            ))}
-          </div>
-        </div>
+        )}
       </nav>
 
-      {/* HERO */}
-      <section id="broadcast" style={{ padding:"48px 32px 40px",maxWidth:1140,margin:"0 auto",position:"relative" }}>
+      {/* Mobile dropdown menu */}
+      {mobile && menuOpen && (
+        <div style={{ background:`${C.black}f8`,backdropFilter:"blur(14px)",
+          borderBottom:`1px solid ${C.deepGold}22`,padding:"16px",
+          display:"flex",flexDirection:"column",gap:12,position:"relative",zIndex:49 }}>
+          {["#broadcast","#charts","#mission"].map((href,i)=>(
+            <a key={href} href={href} onClick={()=>setMenuOpen(false)}
+              style={{ color:C.warmGold,textDecoration:"none",fontFamily:"'JetBrains Mono',monospace",
+                fontSize:12,letterSpacing:"0.12em",textTransform:"uppercase",
+                padding:"8px 0",borderBottom:`1px solid ${C.deepGold}18` }}>
+              {["Broadcast","Charts","Mission"][i]}
+            </a>
+          ))}
+        </div>
+      )}
+
+      {/* ── HERO CONSOLE ── */}
+      <section id="broadcast" style={{ padding:mobile?`24px ${pad} 20px`:`48px ${pad} 40px`,
+        maxWidth:1140,margin:"0 auto",position:"relative" }}>
         <div style={{
-          border:`1px solid ${tuned?C.teal+"66":C.deepGold+"44"}`,borderRadius:14,
+          border:`1px solid ${tuned?C.teal+"66":C.deepGold+"44"}`,borderRadius:mobile?10:14,
           overflow:"hidden",position:"relative",
           background:"linear-gradient(180deg,#141008 0%,#0A0806 100%)",
-          boxShadow:tuned?`0 0 90px ${C.teal}20,inset 0 1px 0 ${C.teal}33`:`0 0 60px ${C.deepGold}12,inset 0 1px 0 ${C.gold}18`,
-          transform:`translateY(${scrollY*0.018}px)`,
+          boxShadow:tuned?`0 0 60px ${C.teal}18,inset 0 1px 0 ${C.teal}28`:`0 0 40px ${C.deepGold}10,inset 0 1px 0 ${C.gold}14`,
+          transform: mobile ? "none" : `translateY(${scrollY*0.018}px)`,
           transition:"border-color 0.9s,box-shadow 0.9s" }}>
+
           <div style={{ position:"absolute",inset:0,zIndex:0 }}><ParticleField active={tuned}/></div>
 
           {/* Title bar */}
           <div style={{ position:"relative",zIndex:2,
             background:`linear-gradient(90deg,${C.deepBurgundy}cc,#1a1208cc,${C.deepBurgundy}cc)`,
             borderBottom:`1px solid ${tuned?C.teal+"44":C.deepGold+"2a"}`,
-            padding:"9px 18px",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
-            <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+            padding:mobile?"7px 14px":"9px 18px",
+            display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+            <div style={{ display:"flex",alignItems:"center",gap:6 }}>
               <div style={{ width:6,height:6,borderRadius:"50%",
                 background:tuned?C.sageTeal:C.dustyRose,
-                animation:tuned?"on-air-blink 1.4s step-end infinite":"none",
-                boxShadow:tuned?`0 0 6px ${C.sageTeal}`:"none" }}/>
-              <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:10,
-                color:tuned?C.sageTeal:C.dustyRose,letterSpacing:"0.15em" }}>
+                animation:tuned?"on-air-blink 1.4s step-end infinite":"none" }}/>
+              <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,
+                color:tuned?C.sageTeal:C.dustyRose,letterSpacing:"0.12em" }}>
                 {tuning?"TUNING...":tuned?"ON AIR":"STANDBY"}
               </span>
             </div>
-            <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.warmGold,letterSpacing:"0.15em" }}>
-              APR BROADCAST CONSOLE v2.0 — {timeStr}
+            <span style={{ fontFamily:"'JetBrains Mono',monospace",
+              fontSize:mobile?8:11,color:C.warmGold,letterSpacing:"0.1em" }}>
+              APR v2.0 — {timeStr}
             </span>
-            <div style={{ display:"flex",gap:0 }}>
-              {[{l:"─"},{l:"□"},{l:"✕"}].map((b,i)=>(
-                <div key={i} style={{ width:32,height:22,display:"flex",alignItems:"center",
-                  justifyContent:"center",fontSize:i===2?10:12,color:C.warmGold,cursor:"default",
-                  borderLeft:`1px solid ${C.deepGold}22`,userSelect:"none",transition:"background 0.1s" }}
-                  onMouseEnter={e=>e.currentTarget.style.background=i===2?"#8B1A1A":`${C.deepGold}22`}
-                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>{b.l}</div>
-              ))}
-            </div>
+            {!mobile && (
+              <div style={{ display:"flex",gap:0 }}>
+                {[{l:"─"},{l:"□"},{l:"✕"}].map((b,i)=>(
+                  <div key={i} style={{ width:32,height:22,display:"flex",alignItems:"center",
+                    justifyContent:"center",fontSize:i===2?10:12,color:C.warmGold,cursor:"default",
+                    borderLeft:`1px solid ${C.deepGold}22`,userSelect:"none",transition:"background 0.1s" }}
+                    onMouseEnter={e=>e.currentTarget.style.background=i===2?"#8B1A1A":`${C.deepGold}22`}
+                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>{b.l}</div>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div style={{ position:"relative",zIndex:2,padding:"36px 36px 32px",
-            display:"grid",gridTemplateColumns:"1fr auto",gap:48,alignItems:"center" }}>
+          {/* Console body — stacks on mobile */}
+          <div style={{ position:"relative",zIndex:2,
+            padding:mobile?"20px 16px 24px":"36px 36px 32px",
+            display:"grid",
+            gridTemplateColumns: mobile ? "1fr" : "1fr auto",
+            gap: mobile ? 24 : 48,
+            alignItems:"center" }}>
+
+            {/* LEFT / TOP on mobile */}
             <div>
-              <div style={{ marginBottom:10 }}>
-                <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.sageTeal,letterSpacing:"0.15em" }}>BROADCASTING SINCE 2026</span>
+              <div style={{ marginBottom:8 }}>
+                <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:10,
+                  color:C.sageTeal,letterSpacing:"0.15em" }}>BROADCASTING SINCE 2026</span>
               </div>
-              <div style={{ display:"flex",alignItems:"center",gap:24,marginBottom:14 }}>
-                <AnimatedSeal size={112} color={tuned?C.gold:C.warmGold} triggered={sealReady}/>
-                <h1 style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:"clamp(50px,7vw,88px)",
+
+              <div style={{ display:"flex",alignItems:"center",
+                gap: mobile ? 16 : 24, marginBottom:12 }}>
+                <AnimatedSeal size={mobile?72:112} color={tuned?C.gold:C.warmGold} triggered={sealReady}/>
+                <h1 style={{ fontFamily:"'Bebas Neue',sans-serif",
+                  fontSize: mobile ? "clamp(40px,12vw,64px)" : "clamp(50px,7vw,88px)",
                   color:C.gold,letterSpacing:"0.06em",lineHeight:0.88,
                   animation:tuned?"freq-flicker 5s ease infinite":"none" }}>
                   ALEC PENN<br/><span style={{ color:C.cream }}>RADIO</span>
                 </h1>
               </div>
+
               <p style={{ fontFamily:"'DM Serif Display',serif",fontStyle:"italic",
-                fontSize:16,color:C.dustyRose,marginBottom:28,lineHeight:1.5 }}>
+                fontSize:mobile?14:16,color:C.dustyRose,marginBottom:20,lineHeight:1.5 }}>
                 AI co-created. Multi-genre. Free for everyone.
               </p>
-              <div style={{ display:"flex",alignItems:"center",gap:16,marginBottom:24 }}>
+
+              {/* Freq display */}
+              <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:20,flexWrap:"wrap" }}>
                 <div style={{ display:"inline-flex",alignItems:"baseline",gap:4,
                   background:"#030201",border:`1px solid ${tuned?C.teal+"55":C.deepGold+"28"}`,
-                  borderRadius:6,padding:"10px 18px",transition:"border-color 0.7s" }}>
-                  <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:32,fontWeight:500,
+                  borderRadius:6,padding:mobile?"8px 14px":"10px 18px",transition:"border-color 0.7s" }}>
+                  <span style={{ fontFamily:"'JetBrains Mono',monospace",
+                    fontSize:mobile?24:32,fontWeight:500,
                     color:tuning?C.warmGold:C.gold,letterSpacing:"0.05em",
                     animation:tuned?"freq-flicker 3s ease infinite":"none",transition:"color 0.3s" }}>{freq.toFixed(1)}</span>
-                  <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:14,color:C.deepGold }}>IM</span>
+                  <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:14,color:C.deepGold }}>IM</span>
                 </div>
-                <Oscilloscope active={tuned}/>
+                {!mobile && <Oscilloscope active={tuned}/>}
               </div>
-              <div style={{ display:"flex",alignItems:"center",gap:20,marginBottom:24 }}>
+
+              {/* VU + Tune */}
+              <div style={{ display:"flex",alignItems:"center",gap:16,marginBottom:20,flexWrap:"wrap" }}>
                 <VUMeter active={tuned}/>
                 <button onClick={handleTuneIn} disabled={tuning}
                   style={{ background:tuned?C.burgundy:C.teal,border:"none",color:C.cream,
-                    padding:"12px 32px",borderRadius:6,fontSize:13,fontWeight:600,
+                    padding:mobile?"10px 24px":"12px 32px",borderRadius:6,
+                    fontSize:mobile?12:13,fontWeight:600,
                     letterSpacing:"0.12em",textTransform:"uppercase",
                     cursor:tuning?"wait":"pointer",fontFamily:"'JetBrains Mono',monospace",
                     animation:tuned?"glow-pulse 2s ease infinite":"none",transition:"background 0.4s" }}>
                   {tuning?"▶ TUNING...":tuned?"■ OFF AIR":"▶ TUNE IN"}
                 </button>
                 {tuned && (
-                  <a href={YT} target="_blank" rel="noreferrer"
-                    style={{ color:C.warmGold,fontSize:12,fontFamily:"'JetBrains Mono',monospace",
-                      letterSpacing:"0.08em",textDecoration:"none",borderBottom:`1px solid ${C.deepGold}` }}>
-                    Open on YouTube ↗
-                  </a>
+                  <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+                    <a href={YT} target="_blank" rel="noreferrer"
+                      style={{ color:C.warmGold,fontSize:11,fontFamily:"'JetBrains Mono',monospace",
+                        letterSpacing:"0.08em",textDecoration:"none",borderBottom:`1px solid ${C.deepGold}` }}>
+                      YouTube ↗
+                    </a>
+                    {nowPlaying && (
+                      <div style={{ display:"flex",alignItems:"center",gap:6,maxWidth:240 }}>
+                        <div style={{ width:5,height:5,borderRadius:"50%",background:C.sageTeal,
+                          animation:"pulse-dot 1s infinite",flexShrink:0 }}/>
+                        <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,
+                          color:C.mistTeal,letterSpacing:"0.06em",overflow:"hidden",
+                          textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
+                          {nowPlaying}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-              <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
-                {GENRES.slice(1,7).map(g=>(
+
+              {/* Genre pills */}
+              <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
+                {GENRES.slice(1,mobile?5:7).map(g=>(
                   <button key={g} onClick={()=>setGenre(g===genre?"All":g)}
                     style={{ background:genre===g?C.teal:"transparent",
                       border:`1px solid ${genre===g?C.teal:C.deepGold+"44"}`,
-                      color:genre===g?C.cream:C.warmGold,padding:"6px 16px",borderRadius:4,
-                      fontSize:11,letterSpacing:"0.08em",textTransform:"uppercase",
+                      color:genre===g?C.cream:C.warmGold,
+                      padding:mobile?"5px 12px":"6px 16px",borderRadius:4,
+                      fontSize:10,letterSpacing:"0.08em",textTransform:"uppercase",
                       cursor:"pointer",transition:"all 0.15s",fontFamily:"inherit" }}>{g}</button>
                 ))}
               </div>
             </div>
 
-            <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:20 }}>
+            {/* RIGHT PANEL — hidden on mobile, shown below on mobile */}
+            <div style={{ display:"flex",flexDirection: mobile?"row":"column",
+              alignItems:"center",gap:mobile?16:20,
+              justifyContent: mobile?"space-between":"center",
+              flexWrap: mobile?"wrap":"nowrap" }}>
+
               <FrequencyDial genre={genre} onChange={setGenre}/>
-              <div style={{ background:"#030201",border:`1px solid ${C.deepGold}22`,borderRadius:8,padding:"16px 20px",minWidth:172 }}>
-                {[
-                  {label:"SIGNAL",val:tuned?"████████░░":"███░░░░░░░",col:C.sageTeal},
-                  {label:"NOISE", val:tuned?"██░░░░░░░░":"█░░░░░░░░░",col:C.dustyRose},
-                  {label:"QUALITY",val:tuned?"█████████░":"████░░░░░░",col:C.gold},
-                ].map(m=>(
-                  <div key={m.label} style={{ marginBottom:10 }}>
-                    <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.warmGold,letterSpacing:"0.15em" }}>{m.label}</span>
-                    <div style={{ fontFamily:"monospace",fontSize:11,color:m.col,letterSpacing:1,marginTop:3,transition:"color 0.6s" }}>{m.val}</div>
+
+              {/* Signal meters — hide on mobile to save space */}
+              {!mobile && (
+                <div style={{ background:"#030201",border:`1px solid ${C.deepGold}22`,
+                  borderRadius:8,padding:"16px 20px",minWidth:172 }}>
+                  {[
+                    {label:"SIGNAL",val:tuned?"████████░░":"███░░░░░░░",col:C.sageTeal},
+                    {label:"NOISE", val:tuned?"██░░░░░░░░":"█░░░░░░░░░",col:C.dustyRose},
+                    {label:"QUALITY",val:tuned?"█████████░":"████░░░░░░",col:C.gold},
+                  ].map(m=>(
+                    <div key={m.label} style={{ marginBottom:10 }}>
+                      <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.warmGold,letterSpacing:"0.15em" }}>{m.label}</span>
+                      <div style={{ fontFamily:"monospace",fontSize:11,color:m.col,letterSpacing:1,marginTop:3,transition:"color 0.6s" }}>{m.val}</div>
+                    </div>
+                  ))}
+                  <div style={{ borderTop:`1px solid ${C.deepGold}22`,paddingTop:10,marginTop:4 }}>
+                    <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.warmGold,letterSpacing:"0.1em",marginBottom:4 }}>CATALOG</div>
+                    <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:22,color:C.gold }}>10,000+</div>
+                    <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.sageTeal }}>TRACKS · GROWING</div>
                   </div>
-                ))}
-                <div style={{ borderTop:`1px solid ${C.deepGold}22`,paddingTop:10,marginTop:4 }}>
-                  <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.warmGold,letterSpacing:"0.1em",marginBottom:4 }}>CATALOG</div>
-                  <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:22,color:C.gold }}>10,000+</div>
-                  <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.sageTeal }}>TRACKS · GROWING</div>
                 </div>
-              </div>
-              <a href="#" style={{ display:"block",width:"100%",textDecoration:"none",
+              )}
+
+              {/* Mobile catalog badge */}
+              {mobile && (
+                <div style={{ background:"#030201",border:`1px solid ${C.deepGold}22`,
+                  borderRadius:8,padding:"12px 16px",textAlign:"center" }}>
+                  <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:18,color:C.gold }}>10,000+</div>
+                  <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:8,color:C.sageTeal }}>TRACKS</div>
+                </div>
+              )}
+
+              {/* Eden's Gate CTA */}
+              <a href="#" style={{ display:"block",
+                width: mobile?"100%":"100%",
+                textDecoration:"none",
                 background:`linear-gradient(135deg,${C.deepBurgundy},${C.burgundy})`,
-                border:`1px solid ${C.roseMaroon}`,borderRadius:8,padding:"14px 20px",
-                textAlign:"center",boxShadow:`0 4px 22px ${C.deepBurgundy}66`,transition:"box-shadow 0.2s" }}
-                onMouseEnter={e=>e.currentTarget.style.boxShadow=`0 8px 32px ${C.burgundy}88`}
-                onMouseLeave={e=>e.currentTarget.style.boxShadow=`0 4px 22px ${C.deepBurgundy}66`}>
-                <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,color:C.paleGold,letterSpacing:"0.15em" }}>EDEN'S GATE</div>
-                <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.dustyRose,marginTop:3 }}>Download the full library ↗</div>
+                border:`1px solid ${C.roseMaroon}`,borderRadius:8,
+                padding:mobile?"12px 16px":"14px 20px",
+                textAlign:"center",boxShadow:`0 4px 22px ${C.deepBurgundy}66`,transition:"box-shadow 0.2s" }}>
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:mobile?15:17,
+                  color:C.paleGold,letterSpacing:"0.15em" }}>EDEN'S GATE</div>
+                <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,
+                  color:C.dustyRose,marginTop:3 }}>Download the full library ↗</div>
               </a>
             </div>
           </div>
         </div>
       </section>
 
-      {/* CHARTS */}
-      <section id="charts" style={{ padding:"40px 32px",maxWidth:1140,margin:"0 auto" }}>
-        <div style={{ display:"flex",alignItems:"baseline",gap:16,marginBottom:24 }}>
-          <h2 style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:C.gold,letterSpacing:"0.1em" }}>TOP CHARTS</h2>
-          <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.sageTeal }}>
-            {loadingYT ? "Loading from YouTube..." : "Most watched on YouTube"}
+      {/* ── CHARTS ── */}
+      <section id="charts" style={{ padding:`40px ${pad}`,maxWidth:1140,margin:"0 auto" }}>
+        <div style={{ display:"flex",alignItems:"baseline",gap:12,marginBottom:20,flexWrap:"wrap" }}>
+          <h2 style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:mobile?28:34,color:C.gold,letterSpacing:"0.1em" }}>TOP CHARTS</h2>
+          <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.sageTeal }}>
+            {loadingYT ? "Loading..." : "Most watched on YouTube"}
           </span>
         </div>
-        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:24 }}>
+        <div style={{ display:"grid",gridTemplateColumns:mobile?"1fr":"1fr 1fr",gap:16 }}>
           <div style={{ border:`1px solid ${C.deepGold}28`,borderRadius:8,overflow:"hidden",background:"#0d0b09" }}>
-            <div style={{ padding:"10px 16px",background:`linear-gradient(90deg,${C.deepBurgundy}88,transparent)`,
+            <div style={{ padding:"10px 14px",
+              background:`linear-gradient(90deg,${C.deepBurgundy}88,transparent)`,
               borderBottom:`1px solid ${C.deepGold}28`,fontFamily:"'JetBrains Mono',monospace",
-              fontSize:10,color:C.warmGold,letterSpacing:"0.15em" }}>▶ TOP 5 — ALL TIME VIEWS</div>
+              fontSize:9,color:C.warmGold,letterSpacing:"0.15em" }}>▶ TOP 5 — ALL TIME VIEWS</div>
             {loadingYT ? (
-              <div style={{ padding:24,fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.deepGold,textAlign:"center" }}>
-                LOADING SIGNAL...
-              </div>
+              <div style={{ padding:20,fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.deepGold,textAlign:"center" }}>LOADING SIGNAL...</div>
             ) : topVideos.length > 0 ? (
               topVideos.map((item,i)=><ChartRow key={item.id} item={item} rank={i+1}/>)
             ) : (
-              <div style={{ padding:24,fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.dustyRose,textAlign:"center" }}>
-                CHECK API KEY IN VERCEL ENV
-              </div>
+              <div style={{ padding:20,fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.dustyRose,textAlign:"center" }}>NO DATA</div>
             )}
-            <div style={{ padding:"12px 16px",textAlign:"center" }}>
+            <div style={{ padding:"10px 14px",textAlign:"center" }}>
               <a href={YT} target="_blank" rel="noreferrer"
-                style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.sageTeal,textDecoration:"none",letterSpacing:"0.08em" }}>
+                style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.sageTeal,textDecoration:"none" }}>
                 Full chart on YouTube ↗
               </a>
             </div>
           </div>
 
-          {/* Fresh Drop */}
-          <div style={{ border:`1px solid ${C.teal}44`,borderRadius:8,overflow:"hidden",background:"#0d0b09",display:"flex",flexDirection:"column" }}>
-            <div style={{ padding:"10px 16px",background:`linear-gradient(90deg,${C.teal}44,transparent)`,
+          <div style={{ border:`1px solid ${C.teal}44`,borderRadius:8,overflow:"hidden",
+            background:"#0d0b09",display:"flex",flexDirection:"column" }}>
+            <div style={{ padding:"10px 14px",
+              background:`linear-gradient(90deg,${C.teal}44,transparent)`,
               borderBottom:`1px solid ${C.teal}33`,fontFamily:"'JetBrains Mono',monospace",
-              fontSize:10,color:C.sageTeal,letterSpacing:"0.15em",display:"flex",alignItems:"center",gap:8 }}>
-              <div style={{ width:6,height:6,borderRadius:"50%",background:C.sageTeal,animation:"pulse-dot 1s infinite" }}/>
+              fontSize:9,color:C.sageTeal,letterSpacing:"0.15em",
+              display:"flex",alignItems:"center",gap:8 }}>
+              <div style={{ width:5,height:5,borderRadius:"50%",background:C.sageTeal,animation:"pulse-dot 1s infinite" }}/>
               FRESH DROP — LATEST UPLOAD
             </div>
-            <div style={{ flex:1,padding:24,display:"flex",flexDirection:"column",justifyContent:"space-between" }}>
+            <div style={{ flex:1,padding:mobile?16:24,display:"flex",flexDirection:"column",justifyContent:"space-between",gap:16 }}>
               <div>
-                <div style={{ fontFamily:"'DM Serif Display',serif",fontSize:20,color:C.cream,marginBottom:8,lineHeight:1.3 }}>
+                <div style={{ fontFamily:"'DM Serif Display',serif",fontSize:mobile?16:20,
+                  color:C.cream,marginBottom:8,lineHeight:1.3 }}>
                   {loadingYT ? "Loading..." : latestTitle}
                 </div>
-                <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.sageTeal,marginBottom:16 }}>
+                <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.sageTeal,marginBottom:12 }}>
                   AI co-created with Suno · Free to use
                 </div>
-                <div style={{ display:"flex",gap:8,flexWrap:"wrap",marginBottom:20 }}>
+                <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
                   {["Lo-Fi","Ambient","Soul","Jazz"].map(tag=>(
                     <span key={tag} style={{ background:`${C.teal}22`,border:`1px solid ${C.teal}44`,
-                      color:C.mistTeal,fontSize:10,padding:"3px 10px",borderRadius:20,
-                      fontFamily:"'JetBrains Mono',monospace",letterSpacing:"0.06em" }}>{tag}</span>
+                      color:C.mistTeal,fontSize:9,padding:"2px 8px",borderRadius:20,
+                      fontFamily:"'JetBrains Mono',monospace" }}>{tag}</span>
                   ))}
                 </div>
               </div>
-              <a href={latestId ? `https://youtube.com/watch?v=${latestId}` : YT}
+              <a href={latestId?`https://youtube.com/watch?v=${latestId}`:YT}
                 target="_blank" rel="noreferrer"
-                style={{ display:"block",background:C.teal,color:C.cream,padding:"12px 20px",
+                style={{ display:"block",background:C.teal,color:C.cream,padding:"11px 16px",
                   borderRadius:6,textAlign:"center",textDecoration:"none",
-                  fontFamily:"'JetBrains Mono',monospace",fontSize:12,letterSpacing:"0.1em",fontWeight:500 }}>
+                  fontFamily:"'JetBrains Mono',monospace",fontSize:11,letterSpacing:"0.1em",fontWeight:500 }}>
                 ▶ Watch Latest on YouTube
               </a>
             </div>
@@ -609,91 +804,101 @@ export default function AlecPennRadio() {
         </div>
       </section>
 
-      {/* SHORTS */}
-      <section id="shorts" style={{ padding:"40px 32px",maxWidth:1140,margin:"0 auto" }}>
-        <div style={{ display:"flex",alignItems:"baseline",gap:16,marginBottom:24 }}>
-          <h2 style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:34,color:C.gold,letterSpacing:"0.1em" }}>SHORTS HALL OF FAME</h2>
-          <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.dustyRose }}>Most liked clips</span>
+      {/* ── SHORTS ── */}
+      <section id="shorts" style={{ padding:`40px ${pad}`,maxWidth:1140,margin:"0 auto" }}>
+        <div style={{ display:"flex",alignItems:"baseline",gap:12,marginBottom:20,flexWrap:"wrap" }}>
+          <h2 style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:mobile?28:34,color:C.gold,letterSpacing:"0.1em" }}>SHORTS HALL OF FAME</h2>
+          <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.dustyRose }}>Most liked clips</span>
         </div>
-        <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:16 }}>
+        <div style={{ display:"grid",
+          gridTemplateColumns:mobile?"repeat(2,1fr)":"repeat(auto-fit,minmax(180px,1fr))",gap:12 }}>
           {loadingYT ? (
-            <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.deepGold }}>LOADING SIGNAL...</div>
+            <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.deepGold }}>LOADING...</div>
           ) : shorts.length > 0 ? (
             shorts.map(item=><ShortCard key={item.id} item={item}/>)
           ) : (
-            [{ title:"1AM Vibes",likes:"—" },{ title:"Rain Loop #7",likes:"—" },
-             { title:"Sunrise Set",likes:"—" },{ title:"Deep Focus",likes:"—" }].map(item=>(
-              <div key={item.title} style={{ background:`linear-gradient(160deg,${C.deepBurgundy},${C.black})`,
-                border:`1px solid ${C.burgundy}55`,borderRadius:8,padding:"20px 16px",
+            ["1AM Vibes","Rain Loop #7","Sunrise Set","Deep Focus"].map(title=>(
+              <div key={title} style={{ background:`linear-gradient(160deg,${C.deepBurgundy},${C.black})`,
+                border:`1px solid ${C.burgundy}55`,borderRadius:8,padding:"16px 14px",
                 display:"flex",flexDirection:"column",gap:8 }}>
-                <div style={{ fontSize:22,color:C.roseMaroon }}>▶</div>
-                <div style={{ color:C.cream,fontSize:13 }}>{item.title}</div>
+                <div style={{ fontSize:18,color:C.roseMaroon }}>▶</div>
+                <div style={{ color:C.cream,fontSize:12 }}>{title}</div>
               </div>
             ))
           )}
         </div>
-        <div style={{ textAlign:"center",marginTop:20 }}>
+        <div style={{ textAlign:"center",marginTop:16 }}>
           <a href={`${YT}/shorts`} target="_blank" rel="noreferrer"
-            style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.dustyRose,textDecoration:"none",letterSpacing:"0.08em" }}>
+            style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:10,
+              color:C.dustyRose,textDecoration:"none",letterSpacing:"0.08em" }}>
             All Shorts on YouTube ↗
           </a>
         </div>
       </section>
 
-      {/* MISSION */}
-      <section id="mission" style={{ padding:"80px 32px",maxWidth:1140,margin:"0 auto",
-        borderTop:`1px solid ${C.deepGold}18`,position:"relative",overflow:"hidden" }}>
-        <div style={{ position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",opacity:0.028,pointerEvents:"none" }}>
-          <WaveSeal size={420} color={C.gold}/>
-        </div>
-        <div style={{ maxWidth:680,margin:"0 auto",textAlign:"center",position:"relative" }}>
-          <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.sageTeal,letterSpacing:"0.2em",marginBottom:16 }}>THE SIGNAL</div>
-          <h2 style={{ fontFamily:"'DM Serif Display',serif",fontSize:"clamp(28px,5vw,48px)",color:C.cream,lineHeight:1.2,marginBottom:20 }}>
+      {/* ── MISSION ── */}
+      <section id="mission" style={{ padding:mobile?`48px ${pad}`:`80px ${pad}`,maxWidth:1140,
+        margin:"0 auto",borderTop:`1px solid ${C.deepGold}18`,position:"relative",overflow:"hidden" }}>
+        {!mobile && (
+          <div style={{ position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",opacity:0.025,pointerEvents:"none" }}>
+            <WaveSeal size={400} color={C.gold}/>
+          </div>
+        )}
+        <div style={{ maxWidth:640,margin:"0 auto",textAlign:"center",position:"relative" }}>
+          <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:10,
+            color:C.sageTeal,letterSpacing:"0.2em",marginBottom:14 }}>THE SIGNAL</div>
+          <h2 style={{ fontFamily:"'DM Serif Display',serif",
+            fontSize:mobile?"clamp(24px,7vw,36px)":"clamp(28px,5vw,48px)",
+            color:C.cream,lineHeight:1.2,marginBottom:16 }}>
             Music made to be <em style={{ color:C.gold }}>given away.</em>
           </h2>
-          <p style={{ fontFamily:"'Georgia',serif",fontSize:16,color:C.dustyRose,lineHeight:1.85,marginBottom:16 }}>
+          <p style={{ fontFamily:"'Georgia',serif",fontSize:mobile?14:16,
+            color:C.dustyRose,lineHeight:1.8,marginBottom:14 }}>
             Alec Penn Radio is a co-creation between human vision and AI — built with Suno,
             broadcast on YouTube, and offered to the world without cost, without gatekeepers, without strings.
           </p>
-          <p style={{ fontFamily:"'Georgia',serif",fontSize:16,color:C.mistTeal,lineHeight:1.85,marginBottom:40 }}>
+          <p style={{ fontFamily:"'Georgia',serif",fontSize:mobile?14:16,
+            color:C.mistTeal,lineHeight:1.8,marginBottom:32 }}>
             Every track is free to use. Always has been. Always will be.
             The full catalog — 10,000+ songs and growing — lives at Eden's Gate.
           </p>
-          <div style={{ display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap" }}>
+          <div style={{ display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap" }}>
             <a href={YT} target="_blank" rel="noreferrer"
-              style={{ background:C.burgundy,color:C.cream,padding:"14px 32px",borderRadius:6,
-                textDecoration:"none",fontFamily:"'JetBrains Mono',monospace",fontSize:12,
-                letterSpacing:"0.1em",border:`1px solid ${C.roseMaroon}`,
-                boxShadow:`0 4px 20px ${C.deepBurgundy}66`,transition:"box-shadow 0.2s" }}
-              onMouseEnter={e=>e.currentTarget.style.boxShadow=`0 8px 32px ${C.burgundy}88`}
-              onMouseLeave={e=>e.currentTarget.style.boxShadow=`0 4px 20px ${C.deepBurgundy}66`}>
+              style={{ background:C.burgundy,color:C.cream,
+                padding:mobile?"12px 20px":"14px 32px",borderRadius:6,
+                textDecoration:"none",fontFamily:"'JetBrains Mono',monospace",
+                fontSize:mobile?11:12,letterSpacing:"0.1em",border:`1px solid ${C.roseMaroon}` }}>
               ▶ Subscribe on YouTube
             </a>
-            <a href="#" style={{ background:"transparent",color:C.paleGold,padding:"14px 32px",
-              borderRadius:6,textDecoration:"none",fontFamily:"'JetBrains Mono',monospace",
-              fontSize:12,letterSpacing:"0.1em",border:`1px solid ${C.deepGold}55`,transition:"all 0.2s" }}
-              onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.gold; e.currentTarget.style.color=C.gold; }}
-              onMouseLeave={e=>{ e.currentTarget.style.borderColor=`${C.deepGold}55`; e.currentTarget.style.color=C.paleGold; }}>
-              Eden's Gate — Full Library ↗
+            <a href="#" style={{ background:"transparent",color:C.paleGold,
+              padding:mobile?"12px 20px":"14px 32px",borderRadius:6,textDecoration:"none",
+              fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:12,letterSpacing:"0.1em",
+              border:`1px solid ${C.deepGold}55` }}>
+              Eden's Gate ↗
             </a>
           </div>
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer style={{ borderTop:`1px solid ${C.deepGold}18`,padding:"28px 32px",
-        display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12 }}>
-        <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-          <WaveSeal size={34} color={C.deepGold}/>
+      <YouTubeRadio playing={tuned} onTrackChange={setNowPlaying}/>
+
+      {/* ── FOOTER ── */}
+      <footer style={{ borderTop:`1px solid ${C.deepGold}18`,
+        padding:mobile?`20px ${pad}`:`28px ${pad}`,
+        display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10 }}>
+        <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+          <WaveSeal size={28} color={C.deepGold}/>
           <div style={{ display:"flex",flexDirection:"column",lineHeight:1.1 }}>
-            <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:C.deepGold,letterSpacing:"0.14em" }}>ALEC PENN</span>
-            <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:10,color:C.warmGold,letterSpacing:"0.28em" }}>RADIO</span>
+            <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:11,color:C.deepGold,letterSpacing:"0.14em" }}>ALEC PENN</span>
+            <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:9,color:C.warmGold,letterSpacing:"0.28em" }}>RADIO</span>
           </div>
         </div>
-        <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.roseMaroon,letterSpacing:"0.1em" }}>
-          AI CO-CREATED · FREE TO USE · NO GATEKEEPERS
-        </div>
-        <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:`${C.deepGold}77` }}>
+        {!mobile && (
+          <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.roseMaroon,letterSpacing:"0.1em" }}>
+            AI CO-CREATED · FREE TO USE · NO GATEKEEPERS
+          </div>
+        )}
+        <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:`${C.deepGold}66` }}>
           © 2026 ALEC PENN RADIO
         </div>
       </footer>
