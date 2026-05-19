@@ -9,7 +9,7 @@ const C = {
 };
 
 const YT = "https://www.youtube.com/@AlecPennRadio";
-const GENRES = ["All","Lo-Fi","Hip Hop","Ambient","Jazz","Electronic","Soul","Classical","World"];
+const GENRES = ["All","Lo-Fi","Psychedelic Jazz","Acoustic","Slow Jams","House","Neo-Classical"];
 
 function useIsMobile() {
   const [mobile, setMobile] = useState(window.innerWidth < 768);
@@ -261,15 +261,24 @@ function FrequencyDial({ genre, onChange }) {
 }
 
 // YouTube Radio Player
-const PLAYLIST_ID = "PLmNBbWRYKMij00GHXkVmWKWOkjGHvkZUO";
+const PLAYLISTS = {
+  "All":              "PLmNBbWRYKMij00GHXkVmWKWOkjGHvkZUO",
+  "Lo-Fi":            "PLmNBbWRYKMiijl7vg_jK_uV_dG8L6Nruh",
+  "Psychedelic Jazz": "PLmNBbWRYKMij00GHXkVmWKWOkjGHvkZUO",
+  "Acoustic":         "PLmNBbWRYKMiilylZojuyYPs_t4akMjjwl",
+  "Slow Jams":        "PLmNBbWRYKMiiqILu7MqJ1lXKOJwvx4f6u",
+  "House":            "PLmNBbWRYKMig_sMtbb1pYP2onNhNM80Qi",
+  "Neo-Classical":    "PLmNBbWRYKMiiJ_TVVlnOLJTV2V8sUdfCw",
+};
+const DEFAULT_PLAYLIST = "PLmNBbWRYKMij00GHXkVmWKWOkjGHvkZUO";
 
-function YouTubeRadio({ playing, onTrackChange }) {
+function YouTubeRadio({ playing, onTrackChange, playlistId }) {
   const playerRef = useRef(null);
   const playerInstanceRef = useRef(null);
   const [ready, setReady] = useState(false);
+  const currentPlaylistRef = useRef(playlistId);
 
   useEffect(() => {
-    // Load YouTube IFrame API
     if (!window.YT) {
       const tag = document.createElement("script");
       tag.src = "https://www.youtube.com/iframe_api";
@@ -283,7 +292,7 @@ function YouTubeRadio({ playing, onTrackChange }) {
         width: "1",
         playerVars: {
           listType: "playlist",
-          list: PLAYLIST_ID,
+          list: currentPlaylistRef.current,
           autoplay: 0,
           controls: 0,
           enablejsapi: 1,
@@ -318,6 +327,21 @@ function YouTubeRadio({ playing, onTrackChange }) {
       playerInstanceRef.current?.destroy?.();
     };
   }, []);
+
+  // Switch playlist when genre changes
+  useEffect(() => {
+    if (!ready || !playerInstanceRef.current) return;
+    if (playlistId !== currentPlaylistRef.current) {
+      currentPlaylistRef.current = playlistId;
+      playerInstanceRef.current.loadPlaylist({
+        listType: "playlist",
+        list: playlistId,
+        index: Math.floor(Math.random() * 20),
+      });
+      playerInstanceRef.current.setShuffle?.(true);
+      if (playing) playerInstanceRef.current.playVideo?.();
+    }
+  }, [playlistId, ready, playing]);
 
   useEffect(() => {
     if (!ready || !playerInstanceRef.current) return;
@@ -667,8 +691,12 @@ export default function AlecPennRadio() {
 
               {/* Genre pills */}
               <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
-                {GENRES.slice(1,mobile?5:7).map(g=>(
-                  <button key={g} onClick={()=>setGenre(g===genre?"All":g)}
+                {GENRES.slice(1).map(g=>(
+                  <button key={g} onClick={()=>{
+                    const newGenre = g===genre?"All":g;
+                    setGenre(newGenre);
+                    if (!tuned) handleTuneIn();
+                  }}
                     style={{ background:genre===g?C.teal:"transparent",
                       border:`1px solid ${genre===g?C.teal:C.deepGold+"44"}`,
                       color:genre===g?C.cream:C.warmGold,
@@ -880,7 +908,7 @@ export default function AlecPennRadio() {
         </div>
       </section>
 
-      <YouTubeRadio playing={tuned} onTrackChange={setNowPlaying}/>
+      <YouTubeRadio playing={tuned} onTrackChange={setNowPlaying} playlistId={PLAYLISTS[genre] || DEFAULT_PLAYLIST}/>
 
       {/* ── FOOTER ── */}
       <footer style={{ borderTop:`1px solid ${C.deepGold}18`,
