@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getLatestVideos, getTopVideos, getTopShorts, formatViews } from "./youtube.js";
+import { loadStation, onAir, audioUrl, gainMul } from "./station.js";
 
 const C = {
   black:"#0A0806",gold:"#C2A24D",deepGold:"#9E7F35",warmGold:"#D4B96A",
@@ -10,14 +11,29 @@ const C = {
 
 const YT = "https://www.youtube.com/@AlecPennRadio";
 
-const GENRES = [
-  { name:"Lo-Fi",           id:"PLmNBbWRYKMiijl7vg_jK_uV_dG8L6Nruh", glow:"#3D7D7B", mood:"late night" },
-  { name:"Psychedelic Jazz",id:"PLmNBbWRYKMij00GHXkVmWKWOkjGHvkZUO", glow:"#C2A24D", mood:"transcendent" },
-  { name:"Acoustic",        id:"PLmNBbWRYKMiilylZojuyYPs_t4akMjjwl", glow:"#D4B96A", mood:"intimate" },
-  { name:"Slow Jams",       id:"PLmNBbWRYKMiiqILu7MqJ1lXKOJwvx4f6u", glow:"#884055", mood:"midnight" },
-  { name:"House",           id:"PLmNBbWRYKMig_sMtbb1pYP2onNhNM80Qi", glow:"#C2A24D", mood:"electric" },
-  { name:"Neo-Classical",   id:"PLmNBbWRYKMiiJ_TVVlnOLJTV2V8sUdfCw", glow:"#A8C9C8", mood:"celestial" },
-];
+// Channel look + feel. Songs come from /station.json (built from the APR MP3s library).
+const STYLE = {
+  "Full Station":      { glow:"#C2A24D", mood:"everything" },
+  "Acoustic Folk":     { glow:"#D4B96A", mood:"campfire" },
+  "Acoustic Pop":      { glow:"#EBD9A0", mood:"sunlit" },
+  "Afrobeats":         { glow:"#C2A24D", mood:"sun-drenched" },
+  "Blues":             { glow:"#3D7D7B", mood:"smoky" },
+  "Chillstep":         { glow:"#A8C9C8", mood:"weightless" },
+  "Experimental Dance":{ glow:"#5E9E9C", mood:"kinetic" },
+  "Experimental Pop":  { glow:"#C49AAA", mood:"off-kilter" },
+  "Experimental Rap":  { glow:"#884055", mood:"raw" },
+  "House":             { glow:"#C2A24D", mood:"electric" },
+  "Lo-Fi":             { glow:"#3D7D7B", mood:"late night" },
+  "Meditation Zen":    { glow:"#D6EBEA", mood:"still" },
+  "Neo-Classical":     { glow:"#A8C9C8", mood:"celestial" },
+  "Phonk":             { glow:"#884055", mood:"after dark" },
+  "Psychedelic Jazz":  { glow:"#C2A24D", mood:"transcendent" },
+  "Slow Jams":         { glow:"#884055", mood:"midnight" },
+  "Synthwave":         { glow:"#C49AAA", mood:"neon" },
+  "Workout":           { glow:"#D4B96A", mood:"full send" },
+};
+const styleOf = (name) => STYLE[name] || { glow:"#C2A24D", mood:"on air" };
+let GENRES = [{ name:"Full Station", slug:"all", ...styleOf("Full Station") }];
 
 const EASTER_EGGS = {
   "ALECPENN": { msg:"YOU FOUND THE SIGNAL. WELCOME TO THE INNER CIRCLE.", playlist:"PLmNBbWRYKMij00GHXkVmWKWOkjGHvkZUO" },
@@ -34,6 +50,8 @@ const TICKER_ITEMS = [
   "MUSIC MADE TO BE GIVEN AWAY",
   "TUNE IN · TURN UP · STAY FREE",
 ];
+
+const fmtTime=(s)=>{ s=Math.max(0,Math.floor(s||0)); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); };
 
 function useIsMobile() {
   const [m,setM]=useState(window.innerWidth<768);
@@ -79,67 +97,68 @@ function AnimatedSeal({ size=120, color=C.gold, triggered=false }) {
   );
 }
 
-/* ── YOUTUBE RADIO ── */
-function YouTubeRadio({ playing, onTrackChange, onThumbChange, playlistId, volume }) {
-  const containerRef=useRef(null);
-  const playerRef=useRef(null);
-  const readyRef=useRef(false);
+/* ── ARCHIVE RADIO (streams the APR library from archive.org on a shared clock) ── */
+function ArchiveRadio({ playing, channel, volume, onTrack, onProgress }) {
+  const audioRef=useRef(null);
+  const skewRef=useRef(0);        // personal skips push you ahead on the schedule
+  const infoRef=useRef(null);
   const volRef=useRef(volume);
+  const playingRef=useRef(playing);
+  const chanRef=useRef(channel);
 
-  const buildPlayer=(pid)=>{
-    if(!containerRef.current) return;
-    try { playerRef.current?.destroy?.(); } catch(e){}
-    playerRef.current=null; readyRef.current=false;
-    containerRef.current.innerHTML="";
-    const div=document.createElement("div");
-    containerRef.current.appendChild(div);
-    const randomIndex=Math.floor(Math.random()*15);
-    const randomStart=Math.floor(Math.random()*1200)+60;
-    playerRef.current=new window.YT.Player(div,{
-      height:"1",width:"1",
-      playerVars:{ listType:"playlist",list:pid,autoplay:1,controls:0,enablejsapi:1,origin:window.location.origin,index:randomIndex,start:randomStart },
-      events:{
-        onReady:(e)=>{
-          readyRef.current=true;
-          e.target.setShuffle(true);
-          e.target.setVolume(volRef.current);
-          if(playing) e.target.playVideo();
-        },
-        onStateChange:(e)=>{
-          if(e.data===window.YT?.PlayerState?.PLAYING){
-            const d=playerRef.current?.getVideoData?.();
-            if(d?.title) onTrackChange(d.title);
-            if(d?.video_id) onThumbChange(`https://img.youtube.com/vi/${d.video_id}/mqdefault.jpg`);
-          }
-          if(e.data===window.YT?.PlayerState?.ENDED) playerRef.current?.nextVideo?.();
-        },
-      },
-    });
+  const applyVolume=()=>{
+    const a=audioRef.current, info=infoRef.current;
+    if(a) a.volume=Math.max(0,Math.min(1,(volRef.current/100)*(info?gainMul(info.track):0.7)));
   };
 
+  const tune=useCallback(()=>{
+    const a=audioRef.current, ch=chanRef.current;
+    if(!a||!ch||!ch.tracks?.length) return;
+    let info=onAir(ch,Date.now()/1000+skewRef.current);
+    if(info.remaining<2){ skewRef.current+=info.remaining+0.1; info=onAir(ch,Date.now()/1000+skewRef.current); }
+    infoRef.current=info;
+    a.src=audioUrl(info.track);
+    a.dataset.offset=String(info.offset);
+    applyVolume();
+    onTrack?.(info);
+    if("mediaSession" in navigator){
+      try{ navigator.mediaSession.metadata=new window.MediaMetadata({ title:info.track.t, artist:"Alec Penn Radio", album:info.track.genre,
+        artwork:[{ src:info.track.cover, sizes:"320x320", type:"image/webp" }] }); }catch(e){}
+    }
+    if(playingRef.current) a.play().catch(()=>{});
+  },[onTrack]);
+
   useEffect(()=>{
-    if(!window.YT){const tag=document.createElement("script");tag.src="https://www.youtube.com/iframe_api";document.head.appendChild(tag);}
-    if(window.YT?.Player){buildPlayer(playlistId);}else{window.onYouTubeIframeAPIReady=()=>buildPlayer(playlistId);}
-    return()=>{try{playerRef.current?.destroy?.();}catch(e){}};
+    const a=new Audio(); a.preload="auto"; audioRef.current=a;
+    a.addEventListener("loadedmetadata",()=>{ const off=parseFloat(a.dataset.offset||"0"); if(off>1&&off<a.duration-2) a.currentTime=off; });
+    a.addEventListener("ended",()=>tune());
+    a.addEventListener("error",()=>{ // a song that won't load: move on to the next one
+      const info=infoRef.current; if(!info) return;
+      setTimeout(()=>{ skewRef.current+=info.remaining+0.1; tune(); },1500);
+    });
+    a.addEventListener("timeupdate",()=>onProgress?.(a.currentTime,infoRef.current?.track?.s||a.duration||0));
+    if("mediaSession" in navigator){ try{ navigator.mediaSession.setActionHandler("nexttrack",()=>window._aprSkip?.()); }catch(e){} }
+    return()=>{ a.pause(); a.src=""; };
   },[]);
 
-  useEffect(()=>{if(window.YT?.Player) buildPlayer(playlistId);},[playlistId]);
+  useEffect(()=>{ chanRef.current=channel; skewRef.current=0; if(playingRef.current) tune(); },[channel]);
 
   useEffect(()=>{
-    if(!readyRef.current||!playerRef.current) return;
-    if(playing){playerRef.current.setShuffle?.(true);playerRef.current.playVideo?.();}
-    else playerRef.current.pauseVideo?.();
+    playingRef.current=playing;
+    const a=audioRef.current; if(!a) return;
+    if(playing) tune();            // (re)joining always lands you live, like real radio
+    else a.pause();
   },[playing]);
 
+  useEffect(()=>{ volRef.current=volume; applyVolume(); },[volume]);
+
   useEffect(()=>{
-    volRef.current=volume;
-    if(readyRef.current&&playerRef.current) playerRef.current.setVolume?.(volume);
-  },[volume]);
+    window._aprSkip=()=>{ const info=infoRef.current; if(!info||!playingRef.current) return;
+      const a=audioRef.current; const left=(info.track.s)-(a?.currentTime||info.offset);
+      skewRef.current+=Math.max(0,left)+0.1; tune(); };
+  },[tune]);
 
-  const skip=()=>{if(readyRef.current&&playerRef.current){playerRef.current.nextVideo?.();}};
-  useEffect(()=>{window._aprSkip=skip;},[]);
-
-  return <div style={{ position:"fixed",bottom:0,left:0,width:1,height:1,opacity:0,pointerEvents:"none",zIndex:-1 }}><div ref={containerRef}/></div>;
+  return null;
 }
 
 /* ── PARTICLES ── */
@@ -264,7 +283,7 @@ function ListenersCounter({ active }) {
 /* ── ALBUM ART ── */
 function AlbumArt({ thumb, active }) {
   return (
-    <div style={{ width:72,height:54,borderRadius:6,overflow:"hidden",flexShrink:0,
+    <div style={{ width:64,height:64,borderRadius:6,overflow:"hidden",flexShrink:0,
       border:`1px solid ${active?C.deepGold+"66":C.deepGold+"22"}`,
       background:C.deepBurgundy,position:"relative",transition:"border-color 0.5s" }}>
       {thumb?(
@@ -385,7 +404,7 @@ function ShortCard({ item }) {
 
 function FrequencyDial({ genre, onChange }) {
   const idx=GENRES.findIndex(g=>g.name===genre);
-  const angle=(Math.max(0,idx)/(GENRES.length-1))*180-90;
+  const angle=(Math.max(0,idx)/Math.max(1,GENRES.length-1))*180-90;
   return (
     <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:8 }}>
       <div style={{ width:60,height:60,borderRadius:"50%",border:`2px solid ${C.gold}`,background:`radial-gradient(circle at 30% 30%,#1a1208,${C.black})`,position:"relative",cursor:"pointer",boxShadow:`0 0 18px ${C.deepGold}55` }}>
@@ -408,9 +427,11 @@ export default function AlecPennRadio() {
   const [tuned,setTuned]=useState(false);
   const [tuning,setTuning]=useState(false);
   const [showStatic,setShowStatic]=useState(false);
+  const [station,setStation]=useState(null);
   const [genre,setGenre]=useState(GENRES[0].name);
-  const [activePlaylist,setActivePlaylist]=useState(GENRES[0].id);
   const [activeGlow,setActiveGlow]=useState(GENRES[0].glow);
+  const [onAirInfo,setOnAirInfo]=useState(null);
+  const [progress,setProgress]=useState([0,0]);
   const [freq,setFreq]=useState(111.1);
   const [sealReady,setSealReady]=useState(false);
   const [scrollY,setScrollY]=useState(0);
@@ -427,6 +448,13 @@ export default function AlecPennRadio() {
   const freqRef=useRef(null);
 
   useEffect(()=>{const t=setTimeout(()=>setSealReady(true),500);return()=>clearTimeout(t);},[]);
+  useEffect(()=>{ loadStation().then(d=>{
+    GENRES=[{ name:"Full Station", slug:"all", ...styleOf("Full Station") },...d.channels.map(c=>({ name:c.name, slug:c.slug, ...styleOf(c.name) }))];
+    setStation(d);
+  }).catch(e=>console.error("station.json",e)); },[]);
+  const activeChannel=station?(genre==="Full Station"?station.all:station.channels.find(c=>c.name===genre)||station.all):null;
+  const handleTrack=useCallback((info)=>{ setOnAirInfo(info); setNowPlaying(info.track.t); setThumb(info.track.cover); },[]);
+  const handleProgress=useCallback((cur,dur)=>setProgress([cur,dur]),[]);
   useEffect(()=>{const f=()=>setScrollY(window.scrollY);window.addEventListener("scroll",f,{passive:true});return()=>window.removeEventListener("scroll",f);},[]);
 
   useEffect(()=>{
@@ -474,7 +502,7 @@ export default function AlecPennRadio() {
 
   const handleTuneIn=useCallback(()=>{
     if(tuning)return;
-    if(tuned){setTuned(false);setNowPlaying(null);setThumb(null);return;}
+    if(tuned){setTuned(false);setNowPlaying(null);setThumb(null);setOnAirInfo(null);return;}
     setTuning(true);setShowStatic(true);
     let f=88.0;
     const sweep=setInterval(()=>{
@@ -484,7 +512,7 @@ export default function AlecPennRadio() {
   },[tuned,tuning]);
 
   const handleGenre=useCallback((g)=>{
-    setGenre(g.name);setActivePlaylist(g.id);setActiveGlow(g.glow);
+    setGenre(g.name);setActiveGlow(g.glow);
     if(!tuned) handleTuneIn();
   },[tuned,handleTuneIn]);
 
@@ -684,11 +712,24 @@ export default function AlecPennRadio() {
               </div>
 
               {/* Now playing */}
-              {tuned&&nowPlaying&&(
-                <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:16,maxWidth:400 }}>
-                  <div style={{ width:5,height:5,borderRadius:"50%",background:activeGlow,animation:"pulse-dot 1s infinite",flexShrink:0 }}/>
-                  <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.mistTeal,letterSpacing:"0.06em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{nowPlaying}</span>
+              {tuned&&onAirInfo&&(
+                <div style={{ marginBottom:16,maxWidth:440 }}>
+                  <div style={{ display:"flex",alignItems:"center",gap:6 }}>
+                    <div style={{ width:5,height:5,borderRadius:"50%",background:activeGlow,animation:"pulse-dot 1s infinite",flexShrink:0 }}/>
+                    <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.sageTeal,letterSpacing:"0.14em" }}>NOW PLAYING · {onAirInfo.track.genre.toUpperCase()}</span>
+                  </div>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:mobile?24:30,color:C.cream,letterSpacing:"0.05em",lineHeight:1.05,marginTop:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{onAirInfo.track.t}</div>
+                  <div style={{ height:3,background:`${C.deepGold}22`,borderRadius:2,marginTop:8,overflow:"hidden" }}>
+                    <div style={{ height:"100%",width:`${progress[1]?Math.min(100,progress[0]/progress[1]*100):0}%`,background:`linear-gradient(90deg,${C.teal},${activeGlow})`,transition:"width 0.3s linear" }}/>
+                  </div>
+                  <div style={{ display:"flex",justifyContent:"space-between",marginTop:5,fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.deepGold }}>
+                    <span>{fmtTime(progress[0])} / {fmtTime(progress[1])}</span>
+                    <span style={{ color:C.mistTeal,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"65%" }}>UP NEXT · {onAirInfo.next.t}</span>
+                  </div>
                 </div>
+              )}
+              {tuned&&!onAirInfo&&(
+                <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.deepGold,marginBottom:16,letterSpacing:"0.1em" }}>LOCKING ONTO SIGNAL...</div>
               )}
 
               {/* Genre buttons */}
@@ -725,15 +766,15 @@ export default function AlecPennRadio() {
                   ))}
                   <div style={{ borderTop:`1px solid ${C.deepGold}22`,paddingTop:10,marginTop:4 }}>
                     <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.warmGold,letterSpacing:"0.1em",marginBottom:4 }}>CATALOG</div>
-                    <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:22,color:C.gold }}>10,000+</div>
-                    <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.sageTeal }}>TRACKS · GROWING</div>
+                    <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:22,color:C.gold }}>{station?station.total.toLocaleString():"—"}</div>
+                    <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.sageTeal }}>TRACKS ON AIR</div>
                   </div>
                 </div>
               )}
               {mobile&&(
                 <div style={{ background:"#030201",border:`1px solid ${C.deepGold}22`,borderRadius:8,padding:"12px 16px",textAlign:"center" }}>
-                  <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:18,color:C.gold }}>10,000+</div>
-                  <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:8,color:C.sageTeal }}>TRACKS</div>
+                  <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:18,color:C.gold }}>{station?station.total.toLocaleString():"—"}</div>
+                  <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:8,color:C.sageTeal }}>TRACKS ON AIR</div>
                 </div>
               )}
               <a href="https://edensgate.art" target="_blank" rel="noreferrer"
@@ -851,7 +892,7 @@ export default function AlecPennRadio() {
         <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:`${C.deepGold}66` }}>© 2026 ALEC PENN RADIO</div>
       </footer>
 
-      <YouTubeRadio playing={tuned} onTrackChange={setNowPlaying} onThumbChange={setThumb} playlistId={activePlaylist} volume={volume}/>
+      <ArchiveRadio playing={tuned} channel={activeChannel} volume={volume} onTrack={handleTrack} onProgress={handleProgress}/>
     </div>
   );
 }
