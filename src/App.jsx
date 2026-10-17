@@ -768,6 +768,10 @@ export default function AlecPennRadio() {
                     <span>{fmtTime(progress[0])} / {fmtTime(progress[1])}</span>
                     <span style={{ color:C.mistTeal,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"65%" }}>UP NEXT · {onAirInfo.next.t}</span>
                   </div>
+                  <a href={`https://edensgate.art/?q=${encodeURIComponent(onAirInfo.track.t)}`} target="_blank" rel="noreferrer"
+                    style={{ display:"inline-block",marginTop:8,fontFamily:"'JetBrains Mono',monospace",fontSize:9,letterSpacing:"0.12em",color:C.paleGold,textDecoration:"none",borderBottom:`1px solid ${C.deepGold}66`,paddingBottom:1 }}>
+                    ↓ DOWNLOAD THIS SONG FREE AT EDEN'S GATE
+                  </a>
                 </div>
               )}
               {tuned&&!onAirInfo&&(
