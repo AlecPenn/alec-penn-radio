@@ -119,25 +119,31 @@ def main():
     block = blocked()
     changed = discover(data)
     tmp = tempfile.mkdtemp()
+    stats = {"checked": 0, "unreachable": 0, "added": 0, "removed": 0, "blocked_on_ia": 0}
     for ch in data["channels"]:
         try:
             meta = json.loads(get(f"https://archive.org/metadata/{ch['ia']}"))
         except Exception as e:
             print(f"{ch['name']}: archive.org didn't answer, leaving it alone ({e})")
+            stats["unreachable"] += 1
             continue
         files = meta.get("files") or []
         originals = [f["name"] for f in files if f.get("source") == "original" and f["name"].lower().endswith(".mp3")]
         if not originals:
             print(f"{ch['name']}: no songs listed on archive.org, leaving it alone")
+            stats["unreachable"] += 1
             continue
+        stats["checked"] += 1
         on_ia = set(originals)
         is_blocked = lambda name: f"{ch['ia']}/{name}" in block
+        stats["blocked_on_ia"] += sum(1 for n in originals if is_blocked(n))
 
         gone = [t for t in ch["tracks"] if t["f"] not in on_ia or is_blocked(t["f"])]
         if gone and len(gone) <= MAX_REMOVE:
             for t in gone:
                 print(f"{ch['name']}: removing {t['f']}")
             ch["tracks"] = [t for t in ch["tracks"] if t not in gone]
+            stats["removed"] += len(gone)
             changed = True
         elif gone:
             print(f"{ch['name']}: {len(gone)} songs look missing - too many to remove automatically, skipping")
@@ -165,9 +171,13 @@ def main():
             ch["tracks"].append({"t": title, "f": name, "s": round(dur, 1), "g": gain, "c": next_c})
             print(f"{ch['name']}: added {title}  ({dur:.0f}s, {lufs:.1f} LUFS, gain {gain})")
             next_c += 1
+            stats["added"] += 1
             changed = True
         ch["tracks"].sort(key=lambda t: t["t"].lower())
 
+    total = sum(len(c["tracks"]) for c in data["channels"])
+    # shows up on the run's page on GitHub
+    print("::notice title=Song sync::" + ", ".join(f"{k.replace('_', ' ')} {v}" for k, v in stats.items()) + f", total songs {total}")
     if changed:
         json.dump(data, open(DATA, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
         total = sum(len(c["tracks"]) for c in data["channels"])
