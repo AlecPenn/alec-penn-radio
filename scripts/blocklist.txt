@@ -1,0 +1,10 @@
+# Songs that must never appear on the site, even if they are still on archive.org.
+# One per line:  <archive.org item>/<file name>
+# Private songs (Her Majesty / The Alec Penn Experience):
+alecpennradio-experimental-rap/5 Dimensional.mp3
+alecpennradio-experimental-rap/Bribe The Ferryman.mp3
+alecpennradio-experimental-rap/Flick Of The Wand.mp3
+alecpennradio-experimental-rap/Infinite.mp3
+alecpennradio-experimental-rap/Nobody Saw Me Do It.mp3
+# Retired to make it an even 1,111:
+alecpennradio-workout/Built In The Dark.mp3

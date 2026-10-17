@@ -1,0 +1,34 @@
+# Every few hours, pick up songs added to (or removed from) archive.org
+# and update the site. Vercel redeploys automatically when this commits.
+name: Sync songs from archive.org
+on:
+  schedule:
+    - cron: "23 */3 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+concurrency: sync-songs
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - run: pip install -q mutagen pillow
+      - run: python scripts/sync_songs.py public/station.json
+      - name: Save changes
+        run: |
+          if [ -n "$(git status --porcelain public)" ]; then
+            git config user.name "Alec Penn Radio"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add public
+            git commit -m "New songs from archive.org"
+            git push
+          fi
+      - name: Keep this schedule switched on
+        # GitHub pauses schedules after 60 quiet days; this keeps it running.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/sync-songs.yml/enable" || true
