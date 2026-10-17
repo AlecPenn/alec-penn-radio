@@ -36,6 +36,19 @@ const STYLE = {
 };
 const styleOf = (name) => STYLE[name] || { glow:"#C2A24D", mood:"on air" };
 let GENRES = [{ name:"Full Station", slug:"all", ...styleOf("Full Station") }];
+// Short links for QR codes / posters: alecpennradio.com/gym, /lofi, /workout, ?station=house ...
+const STATION_ALIASES = { gym:"workout", fitness:"workout", lift:"workout", study:"lofi", "lo-fi":"lofi", focus:"lofi",
+  yoga:"meditation-zen", zen:"meditation-zen", meditation:"meditation-zen", spa:"meditation-zen", jazz:"psychedelic-jazz",
+  folk:"acoustic-folk", acoustic:"acoustic-pop", pop:"experimental-pop", rap:"experimental-rap", "hip-hop":"experimental-rap",
+  dance:"experimental-dance", classical:"neo-classical", rnb:"slow-jams", afro:"afrobeats", gospel:"revival", church:"revival", radio:"all", full:"all" };
+function linkedSlug(){
+  try{
+    const q=new URLSearchParams(window.location.search).get("station");
+    const raw=(q||window.location.pathname.replace(/^\/+|\/+$/g,"")).toLowerCase().trim();
+    if(!raw) return null;
+    return STATION_ALIASES[raw]||raw;
+  }catch(e){ return null; }
+}
 
 const EASTER_EGGS = {
   "ALECPENN": { msg:"YOU FOUND THE SIGNAL. WELCOME TO THE INNER CIRCLE.", playlist:"PLmNBbWRYKMij00GHXkVmWKWOkjGHvkZUO" },
@@ -467,6 +480,7 @@ export default function AlecPennRadio() {
   const [showStatic,setShowStatic]=useState(false);
   const [station,setStation]=useState(null);
   const [genre,setGenre]=useState(GENRES[0].name);
+  const [linked,setLinked]=useState(null);
   const [activeGlow,setActiveGlow]=useState(GENRES[0].glow);
   const [onAirInfo,setOnAirInfo]=useState(null);
   const [progress,setProgress]=useState([0,0]);
@@ -489,6 +503,8 @@ export default function AlecPennRadio() {
   useEffect(()=>{ loadStation().then(d=>{
     GENRES=[{ name:"Full Station", slug:"all", ...styleOf("Full Station") },...d.channels.map(c=>({ name:c.name, slug:c.slug, separate:!!c.separate, ...styleOf(c.name) }))];
     setStation(d);
+    const want=linkedSlug(), g=want&&GENRES.find(x=>x.slug===want);
+    if(g){ setGenre(g.name); setActiveGlow(g.glow); setLinked(g.name); }
   }).catch(e=>console.error("station.json",e)); },[]);
   const activeChannel=station?(genre==="Full Station"?station.all:station.channels.find(c=>c.name===genre)||station.all):null;
   const handleTrack=useCallback((info)=>{ setOnAirInfo(info); setNowPlaying(info.track.t); setThumb(info.track.cover); },[]);
@@ -556,7 +572,7 @@ export default function AlecPennRadio() {
 
   const shareStation=()=>{
     const text=`🎵 Tuned into ${genre} on Alec Penn Radio · 111.1 IM · Free music, no gatekeepers · alecpennradio.com`;
-    if(navigator.share){navigator.share({title:"Alec Penn Radio",text,url:"https://alecpennradio.com"});}
+    if(navigator.share){navigator.share({title:"Alec Penn Radio",text,url:`https://alecpennradio.com/${currentGenreObj.slug==="all"?"":currentGenreObj.slug}`});}
     else{navigator.clipboard.writeText(text).then(()=>alert("Copied to clipboard!"));}
   };
 
@@ -733,8 +749,8 @@ export default function AlecPennRadio() {
                   {tuned&&analyserLive()&&<span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?10:8,color:activeGlow,letterSpacing:"0.14em" }}>● LIVE SIGNAL</span>}
                 </div>
                 <button onClick={handleTuneIn} disabled={tuning}
-                  style={{ background:tuned?C.burgundy:C.teal,border:"none",color:C.cream,padding:mobile?"10px 24px":"12px 32px",borderRadius:6,fontSize:mobile?12:13,fontWeight:600,letterSpacing:"0.12em",textTransform:"uppercase",cursor:tuning?"wait":"pointer",fontFamily:"'JetBrains Mono',monospace",animation:tuned?"glow-pulse 2s ease infinite":"none",transition:"background 0.4s" }}>
-                  {tuning?"▶ TUNING...":tuned?"■ OFF AIR":"▶ TUNE IN"}
+                  style={{ background:tuned?C.burgundy:C.teal,border:"none",color:C.cream,padding:mobile?"14px 24px":"12px 32px",minHeight:mobile?48:undefined,borderRadius:6,fontSize:mobile?12:13,fontWeight:600,letterSpacing:"0.12em",textTransform:"uppercase",cursor:tuning?"wait":"pointer",fontFamily:"'JetBrains Mono',monospace",animation:tuned?"glow-pulse 2s ease infinite":"none",transition:"background 0.4s" }}>
+                  {tuning?"▶ TUNING...":tuned?"■ OFF AIR":linked?`▶ TUNE IN · ${genre.toUpperCase()}`:"▶ TUNE IN"}
                 </button>
                 {tuned&&(
                   <button onClick={()=>window._aprSkip?.()}
