@@ -14,7 +14,7 @@ export async function loadStation() {
   const raw = await res.json();
   const channels = raw.channels.map((c) => ({
     ...c,
-    tracks: c.tracks.map((t, i) => ({ ...t, ia: c.ia, genre: c.name, cover: `/covers/${c.slug}/${i}.webp`, key: `${c.slug}/${i}` })),
+    tracks: c.tracks.map((t, i) => ({ ...t, ia: c.ia, genre: c.name, cover: `/covers/${c.slug}/${t.c ?? i}.webp`, key: `${c.slug}/${i}` })),
   }));
   // "FULL STATION": every channel mixed together
   // Separate stations (like The Revival Series) only play when picked — never in the mix.
