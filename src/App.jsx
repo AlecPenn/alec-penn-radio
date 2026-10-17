@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getLatestVideos, getTopVideos, getTopShorts, formatViews } from "./youtube.js";
 import { loadStation, onAir, audioUrl, gainMul } from "./station.js";
-import { setListening, subscribe as subscribeListeners } from "./listeners.js";
 import { canAnalyse, attach as attachAnalyser, resume as resumeAnalyser, detach as detachAnalyser, getWave, getBands, getBass, live as analyserLive } from "./analyser.js";
 
 const C = {
@@ -319,21 +318,6 @@ function VolumeDial({ volume, onChange }) {
   );
 }
 
-/* ── LISTENERS COUNTER (real: everyone tuned in right now) ── */
-function ListenersCounter({ active }) {
-  const [count,setCount]=useState(null);
-  useEffect(()=>subscribeListeners(setCount),[]);
-  if(!active||count==null) return null;
-  return (
-    <div style={{ display:"flex",alignItems:"center",gap:5 }}>
-      <div style={{ width:5,height:5,borderRadius:"50%",background:C.sageTeal,animation:"pulse-dot 1.5s infinite" }}/>
-      <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.sageTeal,letterSpacing:"0.1em" }}>
-        {count.toLocaleString()} LISTENING
-      </span>
-    </div>
-  );
-}
-
 /* ── ALBUM ART ── */
 function AlbumArt({ thumb, active }) {
   return (
@@ -502,7 +486,6 @@ export default function AlecPennRadio() {
   const freqRef=useRef(null);
 
   useEffect(()=>{const t=setTimeout(()=>setSealReady(true),500);return()=>clearTimeout(t);},[]);
-  useEffect(()=>{ setListening(tuned); },[tuned]);
   useEffect(()=>{ loadStation().then(d=>{
     GENRES=[{ name:"Full Station", slug:"all", ...styleOf("Full Station") },...d.channels.map(c=>({ name:c.name, slug:c.slug, separate:!!c.separate, ...styleOf(c.name) }))];
     setStation(d);
@@ -644,7 +627,7 @@ export default function AlecPennRadio() {
               </div>
             </div>
             <div style={{ display:"flex",gap:16,alignItems:"center" }}>
-              <ListenersCounter active={tuned}/>
+              
               <a href="#broadcast" className="nav-link">Broadcast</a>
               <a href="#charts" className="nav-link">Charts</a>
               <a href="#mission" className="nav-link">Mission</a>
@@ -663,7 +646,7 @@ export default function AlecPennRadio() {
         )}
         {mobile&&(
           <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-            <ListenersCounter active={tuned}/>
+            
             <a href={YT} target="_blank" rel="noreferrer" style={{ background:C.burgundy,color:C.cream,padding:"4px 12px",borderRadius:4,fontSize:10,letterSpacing:"0.08em",textDecoration:"none",fontFamily:"'JetBrains Mono',monospace",border:`1px solid ${C.roseMaroon}` }}>YT ↗</a>
             <button onClick={()=>setMenuOpen(o=>!o)} style={{ background:"transparent",border:`1px solid ${C.deepGold}44`,color:C.warmGold,padding:"6px 10px",borderRadius:4,cursor:"pointer",fontFamily:"'JetBrains Mono',monospace",fontSize:14 }}>{menuOpen?"✕":"≡"}</button>
           </div>
@@ -724,7 +707,6 @@ export default function AlecPennRadio() {
                   <h1 style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:mobile?"clamp(40px,12vw,64px)":"clamp(50px,7vw,88px)",color:tuned?activeGlow:C.gold,letterSpacing:"0.06em",lineHeight:0.88,animation:tuned?"freq-flicker 5s ease infinite":"none",transition:"color 0.8s" }}>
                     ALEC PENN<br/><span style={{ color:C.cream }}>RADIO</span>
                   </h1>
-                  {tuned&&<div style={{ marginTop:8 }}><ListenersCounter active={tuned}/></div>}
                 </div>
               </div>
 
