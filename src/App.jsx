@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getLatestVideos, getTopVideos, getTopShorts, formatViews } from "./youtube.js";
 import { loadStation, onAir, audioUrl, gainMul } from "./station.js";
+import { setListening, subscribe as subscribeListeners } from "./listeners.js";
 import { canAnalyse, attach as attachAnalyser, resume as resumeAnalyser, detach as detachAnalyser, getWave, getBands, getBass, live as analyserLive } from "./analyser.js";
 
 const C = {
@@ -40,12 +41,12 @@ let GENRES = [{ name:"Full Station", slug:"all", ...styleOf("Full Station") }];
 const EASTER_EGGS = {
   "ALECPENN": { msg:"YOU FOUND THE SIGNAL. WELCOME TO THE INNER CIRCLE.", playlist:"PLmNBbWRYKMij00GHXkVmWKWOkjGHvkZUO" },
   "EDENGATE": { msg:"THE GATE IS OPEN. IT ALWAYS WAS.", playlist:"PLmNBbWRYKMiijl7vg_jK_uV_dG8L6Nruh" },
-  "FREEMUSI": { msg:"10,000 SONGS. ZERO COST. FOREVER FREE.", playlist:"PLmNBbWRYKMiiqILu7MqJ1lXKOJwvx4f6u" },
+  "FREEMUSI": { msg:"EVERY SONG. ZERO COST. FOREVER FREE.", playlist:"PLmNBbWRYKMiiqILu7MqJ1lXKOJwvx4f6u" },
 };
 
 const TICKER_ITEMS = [
   "NOW BROADCASTING · ALEC PENN RADIO · 111.1 IM",
-  "10,000+ TRACKS · ALL FREE · ALL YOURS",
+  "EVERY TRACK FREE · ALL YOURS",
   "AI CO-CREATED WITH SUNO · HUMAN VISION · MACHINE SOUL",
   "DOWNLOAD THE FULL LIBRARY AT EDENSGATE.ART",
   "NO GATEKEEPERS · NO PAYWALLS · NO STRINGS",
@@ -318,21 +319,11 @@ function VolumeDial({ volume, onChange }) {
   );
 }
 
-/* ── LISTENERS COUNTER ── */
+/* ── LISTENERS COUNTER (real: everyone tuned in right now) ── */
 function ListenersCounter({ active }) {
-  const [count,setCount]=useState(0);
-  const baseRef=useRef(Math.floor(Math.random()*180)+120);
-  useEffect(()=>{
-    if(!active){setCount(0);return;}
-    setCount(baseRef.current);
-    const interval=setInterval(()=>{
-      const drift=Math.floor((Math.random()-0.45)*3);
-      baseRef.current=Math.max(80,Math.min(400,baseRef.current+drift));
-      setCount(baseRef.current);
-    },4000);
-    return()=>clearInterval(interval);
-  },[active]);
-  if(!active) return null;
+  const [count,setCount]=useState(null);
+  useEffect(()=>subscribeListeners(setCount),[]);
+  if(!active||count==null) return null;
   return (
     <div style={{ display:"flex",alignItems:"center",gap:5 }}>
       <div style={{ width:5,height:5,borderRadius:"50%",background:C.sageTeal,animation:"pulse-dot 1.5s infinite" }}/>
@@ -511,6 +502,7 @@ export default function AlecPennRadio() {
   const freqRef=useRef(null);
 
   useEffect(()=>{const t=setTimeout(()=>setSealReady(true),500);return()=>clearTimeout(t);},[]);
+  useEffect(()=>{ setListening(tuned); },[tuned]);
   useEffect(()=>{ loadStation().then(d=>{
     GENRES=[{ name:"Full Station", slug:"all", ...styleOf("Full Station") },...d.channels.map(c=>({ name:c.name, slug:c.slug, separate:!!c.separate, ...styleOf(c.name) }))];
     setStation(d);
@@ -707,7 +699,7 @@ export default function AlecPennRadio() {
               <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:tuned?C.sageTeal:C.dustyRose,letterSpacing:"0.12em" }}>{tuning?"TUNING...":tuned?"ON AIR":"STANDBY"}</span>
               {tuned&&<span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:activeGlow,letterSpacing:"0.1em",marginLeft:8 }}>· {genre.toUpperCase()} · {currentGenreObj.mood.toUpperCase()}</span>}
             </div>
-            <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?8:11,color:C.warmGold,letterSpacing:"0.1em" }}>APR v2.0 — {timeStr}</span>
+            <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?8:11,color:C.warmGold,letterSpacing:"0.1em" }}>{timeStr}</span>
             {!mobile&&(
               <div style={{ display:"flex",gap:0 }}>
                 {[{l:"─"},{l:"□"},{l:"✕"}].map((b,i)=>(
@@ -754,7 +746,10 @@ export default function AlecPennRadio() {
 
               {/* VU + controls */}
               <div style={{ display:"flex",alignItems:"center",gap:16,marginBottom:20,flexWrap:"wrap" }}>
-                <VUMeter active={tuned}/>
+                <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+                  <VUMeter active={tuned}/>
+                  {tuned&&analyserLive()&&<span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:8,color:activeGlow,letterSpacing:"0.14em" }}>● LIVE SIGNAL</span>}
+                </div>
                 <button onClick={handleTuneIn} disabled={tuning}
                   style={{ background:tuned?C.burgundy:C.teal,border:"none",color:C.cream,padding:mobile?"10px 24px":"12px 32px",borderRadius:6,fontSize:mobile?12:13,fontWeight:600,letterSpacing:"0.12em",textTransform:"uppercase",cursor:tuning?"wait":"pointer",fontFamily:"'JetBrains Mono',monospace",animation:tuned?"glow-pulse 2s ease infinite":"none",transition:"background 0.4s" }}>
                   {tuning?"▶ TUNING...":tuned?"■ OFF AIR":"▶ TUNE IN"}
@@ -837,7 +832,7 @@ export default function AlecPennRadio() {
                   <div style={{ display:"flex",gap:18,alignItems:"baseline",fontFamily:"'JetBrains Mono',monospace" }}>
                     <span style={{ fontSize:18,color:C.gold }}>{station?station.total.toLocaleString():"—"}</span>
                     <span style={{ fontSize:9,color:C.sageTeal,letterSpacing:"0.14em" }}>TRACKS ON AIR</span>
-                    <span style={{ fontSize:9,color:C.deepGold,letterSpacing:"0.14em" }}>{analyserLive()&&tuned?"● LIVE SIGNAL":""}</span>
+                    
                   </div>
                 </div>
               )}
@@ -935,7 +930,7 @@ export default function AlecPennRadio() {
             Alec Penn Radio is a co-creation between human vision and AI — built with Suno, broadcast on YouTube, and offered to the world without cost, without gatekeepers, without strings.
           </p>
           <p style={{ fontFamily:"'Georgia',serif",fontSize:mobile?14:16,color:C.mistTeal,lineHeight:1.8,marginBottom:32 }}>
-            Every track is free to use. Always has been. Always will be. The full catalog — 10,000+ songs and growing — lives at Eden's Gate.
+            Every track is free to use. Always has been. Always will be. The full catalog lives at Eden's Gate.
           </p>
           <div style={{ display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap" }}>
             <a href={YT} target="_blank" rel="noreferrer" style={{ background:C.burgundy,color:C.cream,padding:mobile?"12px 20px":"14px 32px",borderRadius:6,textDecoration:"none",fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:12,letterSpacing:"0.1em",border:`1px solid ${C.roseMaroon}` }}>▶ Subscribe on YouTube</a>
