@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getLatestVideos, getTopVideos, getTopShorts, formatViews } from "./youtube.js";
 import { loadStation, onAir, audioUrl, gainMul } from "./station.js";
+import { canAnalyse, attach as attachAnalyser, resume as resumeAnalyser, detach as detachAnalyser, getWave, getBands, getBass, live as analyserLive } from "./analyser.js";
 
 const C = {
   black:"#0A0806",gold:"#C2A24D",deepGold:"#9E7F35",warmGold:"#D4B96A",
@@ -126,20 +127,37 @@ function ArchiveRadio({ playing, channel, volume, onTrack, onProgress }) {
       try{ navigator.mediaSession.metadata=new window.MediaMetadata({ title:info.track.t, artist:"Alec Penn Radio", album:info.track.genre,
         artwork:[{ src:info.track.cover, sizes:"320x320", type:"image/webp" }] }); }catch(e){}
     }
-    if(playingRef.current) a.play().catch(()=>{});
+    if(playingRef.current){
+      if(corsModeRef.current){ attachAnalyser(a); resumeAnalyser(); }
+      a.play().catch(()=>{});
+    }
   },[onTrack]);
 
-  useEffect(()=>{
-    const a=new Audio(); a.preload="auto"; audioRef.current=a;
+  // Real visualizer: load audio "cross-origin" so the browser lets us read the sound.
+  // If archive.org ever refuses that, we quietly switch to plain playback (music first).
+  const corsModeRef=useRef(canAnalyse());
+  const playedOkRef=useRef(false);
+  const makeAudio=useCallback((cors)=>{
+    const old=audioRef.current; if(old){ old.pause(); old.removeAttribute("src"); old.load(); }
+    const a=new Audio(); a.preload="auto"; if(cors) a.crossOrigin="anonymous"; audioRef.current=a;
     a.addEventListener("loadedmetadata",()=>{ const off=parseFloat(a.dataset.offset||"0"); if(off>1&&off<a.duration-2) a.currentTime=off; });
+    a.addEventListener("playing",()=>{ playedOkRef.current=true; });
     a.addEventListener("ended",()=>tune());
-    a.addEventListener("error",()=>{ // a song that won't load: move on to the next one
-      const info=infoRef.current; if(!info) return;
+    a.addEventListener("error",()=>{
+      if(corsModeRef.current&&!playedOkRef.current){ // probably blocked from reading the sound: fall back
+        corsModeRef.current=false; detachAnalyser(); makeAudio(false); tune(); return;
+      }
+      const info=infoRef.current; if(!info) return; // a song that won't load: move on to the next one
       setTimeout(()=>{ skewRef.current+=info.remaining+0.1; tune(); },1500);
     });
     a.addEventListener("timeupdate",()=>onProgress?.(a.currentTime,infoRef.current?.track?.s||a.duration||0));
+    return a;
+  },[]);
+
+  useEffect(()=>{
+    makeAudio(corsModeRef.current);
     if("mediaSession" in navigator){ try{ navigator.mediaSession.setActionHandler("nexttrack",()=>window._aprSkip?.()); }catch(e){} }
-    return()=>{ a.pause(); a.src=""; };
+    return()=>{ const a=audioRef.current; if(a){ a.pause(); a.src=""; } };
   },[]);
 
   useEffect(()=>{ chanRef.current=channel; skewRef.current=0; if(playingRef.current) tune(); },[channel]);
@@ -197,20 +215,56 @@ function ParticleField({ active, glowColor }) {
   return <canvas ref={canvasRef} style={{ position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none" }}/>;
 }
 
-/* ── VU METER ── */
+/* ── VU METER (real levels when available) ── */
 function VUMeter({ active }) {
+  const bars=useRef([]);
+  useEffect(()=>{
+    let raf; const n=14, cur=new Array(n).fill(0);
+    const tick=(now)=>{
+      const b=active?getBands(n):null;
+      for(let i=0;i<n;i++){
+        const target=!active?0:b?Math.pow(b[i],0.8):(0.35+0.35*Math.sin(now/(160+i*30)+i));
+        cur[i]+=(target-cur[i])*(target>cur[i]?0.5:0.12);
+        const el=bars.current[i]; if(el) el.style.height=`${4+cur[i]*30}px`;
+      }
+      raf=requestAnimationFrame(tick);
+    };
+    raf=requestAnimationFrame(tick); return()=>cancelAnimationFrame(raf);
+  },[active]);
   return (
     <div style={{ display:"flex",alignItems:"flex-end",gap:3,height:36 }}>
       {Array.from({length:14}).map((_,i)=>(
-        <div key={i} style={{ width:4,minHeight:4,borderRadius:2,background:i<8?C.teal:i<11?C.gold:C.roseMaroon,
-          animation:active?`vu-bounce ${0.22+i*0.038}s ease-in-out infinite alternate`:"none",height:active?undefined:4 }}/>
+        <div key={i} ref={el=>bars.current[i]=el} style={{ width:4,height:4,borderRadius:2,background:i<8?C.teal:i<11?C.gold:C.roseMaroon }}/>
       ))}
     </div>
   );
 }
 
-/* ── OSCILLOSCOPE ── */
-function Oscilloscope({ active }) {
+/* ── 3D TURNTABLE ── */
+function hasWebGL(){ try{ const c=document.createElement("canvas"); return !!(window.WebGLRenderingContext&&(c.getContext("webgl2")||c.getContext("webgl"))); }catch(e){ return false; } }
+function Turntable({ playing, cover, glow, progress, mobile, height }) {
+  const canvasRef=useRef(null), ttRef=useRef(null);
+  const [failed,setFailed]=useState(()=>!hasWebGL());
+  useEffect(()=>{
+    if(failed) return; let alive=true;
+    import("./turntable.js").then(m=>{
+      if(!alive||!canvasRef.current) return;
+      try{ ttRef.current=m.createTurntable(canvasRef.current,{ mobile, getBass });
+        ttRef.current.setGlow(glow); ttRef.current.setPlaying(playing); if(cover) ttRef.current.setCover(cover);
+      }catch(e){ console.error(e); setFailed(true); }
+    }).catch(()=>setFailed(true));
+    return()=>{ alive=false; ttRef.current?.dispose(); ttRef.current=null; };
+  },[failed]);
+  useEffect(()=>{ ttRef.current?.setPlaying(playing); },[playing]);
+  useEffect(()=>{ if(cover) ttRef.current?.setCover(cover); },[cover]);
+  useEffect(()=>{ ttRef.current?.setGlow(glow); },[glow]);
+  useEffect(()=>{ ttRef.current?.setProgress(progress); },[progress]);
+  if(failed) return null;
+  return <canvas ref={canvasRef} aria-label="Record player showing the song that's playing" style={{ display:"block",width:"100%",height,touchAction:"pan-y" }}/>;
+}
+
+/* ── OSCILLOSCOPE (real waveform when available) ── */
+function Oscilloscope({ active, color=C.sageTeal }) {
   const canvasRef=useRef(null);
   const animRef=useRef(null);
   const t=useRef(0);
@@ -219,14 +273,22 @@ function Oscilloscope({ active }) {
     const ctx=canvas.getContext("2d");const W=canvas.width,H=canvas.height;
     const draw=()=>{
       ctx.clearRect(0,0,W,H);
-      ctx.strokeStyle=active?C.sageTeal:C.lazyTeal+"33";ctx.lineWidth=1.5;ctx.shadowBlur=active?8:0;ctx.shadowColor=C.sageTeal;
+      ctx.strokeStyle=active?color:C.lazyTeal+"33";ctx.lineWidth=1.5;ctx.shadowBlur=active?8:0;ctx.shadowColor=color;
       ctx.beginPath();
-      for(let x=0;x<W;x++){const amp=active?H*0.36:H*0.03;const y=H/2+amp*(Math.sin(x*0.04+t.current)*0.5+Math.sin(x*0.09+t.current*1.4)*0.3+Math.sin(x*0.02+t.current*0.6)*0.2);x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}
+      const w=active?getWave():null;
+      if(w){
+        // find a rising zero-crossing so the wave stands still instead of jittering
+        let st=0; for(let i=1;i<w.length/2;i++){ if(w[i-1]<128&&w[i]>=128){st=i;break;} }
+        const span=Math.min(w.length-st,W*3);
+        for(let x=0;x<W;x++){ const v=(w[st+Math.floor(x/W*span)]-128)/128; const y=H/2+v*H*0.46; x===0?ctx.moveTo(x,y):ctx.lineTo(x,y); }
+      }else{
+        for(let x=0;x<W;x++){const amp=active?H*0.36:H*0.03;const y=H/2+amp*(Math.sin(x*0.04+t.current)*0.5+Math.sin(x*0.09+t.current*1.4)*0.3+Math.sin(x*0.02+t.current*0.6)*0.2);x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}
+      }
       ctx.stroke();t.current+=active?0.065:0.008;animRef.current=requestAnimationFrame(draw);
     };
     draw();return()=>cancelAnimationFrame(animRef.current);
-  },[active]);
-  return <canvas ref={canvasRef} width={180} height={44} style={{ display:"block",borderRadius:4,border:`1px solid ${active?C.sageTeal+"44":C.deepGold+"18"}`,background:"#030201",transition:"border-color 0.5s",maxWidth:"100%" }}/>;
+  },[active,color]);
+  return <canvas ref={canvasRef} width={180} height={44} style={{ display:"block",borderRadius:4,border:`1px solid ${active?color+"44":C.deepGold+"18"}`,background:"#030201",transition:"border-color 0.5s",maxWidth:"100%" }}/>;
 }
 
 /* ── VOLUME DIAL ── */
@@ -678,13 +740,15 @@ export default function AlecPennRadio() {
                 AI co-created. Multi-genre. Free for everyone.
               </p>
 
+              {mobile&&<div style={{ margin:"0 -16px 14px" }}><Turntable playing={tuned} cover={thumb} glow={activeGlow} progress={progress[1]?progress[0]/progress[1]:0} mobile={true} height={250}/></div>}
+
               {/* Freq + oscilloscope + album art */}
               <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:20,flexWrap:"wrap" }}>
                 <div style={{ display:"inline-flex",alignItems:"baseline",gap:4,background:"#030201",border:`1px solid ${tuned?activeGlow+"55":C.deepGold+"28"}`,borderRadius:6,padding:mobile?"8px 14px":"10px 18px",transition:"border-color 0.7s" }}>
                   <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?24:32,fontWeight:500,color:tuning?C.warmGold:tuned?activeGlow:C.gold,letterSpacing:"0.05em",animation:tuned?"freq-flicker 3s ease infinite":"none",transition:"color 0.8s" }}>{freq.toFixed(1)}</span>
                   <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:14,color:C.deepGold }}>IM</span>
                 </div>
-                {!mobile&&<Oscilloscope active={tuned}/>}
+                {!mobile&&<Oscilloscope active={tuned} color={tuned?activeGlow:C.sageTeal}/>}
                 <AlbumArt thumb={thumb} active={tuned}/>
               </div>
 
@@ -767,19 +831,13 @@ export default function AlecPennRadio() {
 
             {/* Right panel */}
             <div style={{ display:"flex",flexDirection:mobile?"row":"column",alignItems:"center",gap:mobile?16:20,justifyContent:mobile?"space-between":"center",flexWrap:mobile?"wrap":"nowrap" }}>
-              <FrequencyDial genre={genre} onChange={(name)=>{const g=GENRES.find(x=>x.name===name);if(g)handleGenre(g);}}/>
               {!mobile&&(
-                <div style={{ background:"#030201",border:`1px solid ${C.deepGold}22`,borderRadius:8,padding:"16px 20px",minWidth:172 }}>
-                  {[{label:"SIGNAL",val:tuned?"████████░░":"███░░░░░░░",col:C.sageTeal},{label:"NOISE",val:tuned?"██░░░░░░░░":"█░░░░░░░░░",col:C.dustyRose},{label:"QUALITY",val:tuned?"█████████░":"████░░░░░░",col:C.gold}].map(m=>(
-                    <div key={m.label} style={{ marginBottom:10 }}>
-                      <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.warmGold,letterSpacing:"0.15em" }}>{m.label}</span>
-                      <div style={{ fontFamily:"monospace",fontSize:11,color:m.col,letterSpacing:1,marginTop:3,transition:"color 0.6s" }}>{m.val}</div>
-                    </div>
-                  ))}
-                  <div style={{ borderTop:`1px solid ${C.deepGold}22`,paddingTop:10,marginTop:4 }}>
-                    <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.warmGold,letterSpacing:"0.1em",marginBottom:4 }}>CATALOG</div>
-                    <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:22,color:C.gold }}>{station?station.total.toLocaleString():"—"}</div>
-                    <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.sageTeal }}>TRACKS ON AIR</div>
+                <div style={{ width:420,display:"flex",flexDirection:"column",alignItems:"center",gap:6 }}>
+                  <Turntable playing={tuned} cover={thumb} glow={activeGlow} progress={progress[1]?progress[0]/progress[1]:0} mobile={false} height={330}/>
+                  <div style={{ display:"flex",gap:18,alignItems:"baseline",fontFamily:"'JetBrains Mono',monospace" }}>
+                    <span style={{ fontSize:18,color:C.gold }}>{station?station.total.toLocaleString():"—"}</span>
+                    <span style={{ fontSize:9,color:C.sageTeal,letterSpacing:"0.14em" }}>TRACKS ON AIR</span>
+                    <span style={{ fontSize:9,color:C.deepGold,letterSpacing:"0.14em" }}>{analyserLive()&&tuned?"● LIVE SIGNAL":""}</span>
                   </div>
                 </div>
               )}
