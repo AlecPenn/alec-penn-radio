@@ -17,7 +17,8 @@ export async function loadStation() {
     tracks: c.tracks.map((t, i) => ({ ...t, ia: c.ia, genre: c.name, cover: `/covers/${c.slug}/${i}.webp`, key: `${c.slug}/${i}` })),
   }));
   // "FULL STATION": every channel mixed together
-  const all = { slug: "all", name: "Full Station", tracks: channels.flatMap((c) => c.tracks) };
+  // Separate stations (like The Revival Series) only play when picked — never in the mix.
+  const all = { slug: "all", name: "Full Station", tracks: channels.filter((c) => !c.separate).flatMap((c) => c.tracks) };
   _data = { channels, all, total: all.tracks.length };
   return _data;
 }

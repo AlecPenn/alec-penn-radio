@@ -31,6 +31,7 @@ const STYLE = {
   "Slow Jams":         { glow:"#884055", mood:"midnight" },
   "Synthwave":         { glow:"#C49AAA", mood:"neon" },
   "Workout":           { glow:"#D4B96A", mood:"full send" },
+  "The Revival Series":{ glow:"#EBD9A0", mood:"uplifted" },
 };
 const styleOf = (name) => STYLE[name] || { glow:"#C2A24D", mood:"on air" };
 let GENRES = [{ name:"Full Station", slug:"all", ...styleOf("Full Station") }];
@@ -449,7 +450,7 @@ export default function AlecPennRadio() {
 
   useEffect(()=>{const t=setTimeout(()=>setSealReady(true),500);return()=>clearTimeout(t);},[]);
   useEffect(()=>{ loadStation().then(d=>{
-    GENRES=[{ name:"Full Station", slug:"all", ...styleOf("Full Station") },...d.channels.map(c=>({ name:c.name, slug:c.slug, ...styleOf(c.name) }))];
+    GENRES=[{ name:"Full Station", slug:"all", ...styleOf("Full Station") },...d.channels.map(c=>({ name:c.name, slug:c.slug, separate:!!c.separate, ...styleOf(c.name) }))];
     setStation(d);
   }).catch(e=>console.error("station.json",e)); },[]);
   const activeChannel=station?(genre==="Full Station"?station.all:station.channels.find(c=>c.name===genre)||station.all):null;
@@ -734,11 +735,22 @@ export default function AlecPennRadio() {
 
               {/* Genre buttons */}
               <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
-                {GENRES.map(g=>(
+                {GENRES.filter(g=>!g.separate).map(g=>(
                   <button key={g.name} onClick={()=>handleGenre(g)}
                     style={{ background:genre===g.name?g.glow:"transparent",border:`1px solid ${genre===g.name?g.glow:C.deepGold+"44"}`,color:genre===g.name?C.black:C.warmGold,padding:mobile?"5px 12px":"6px 16px",borderRadius:4,fontSize:10,letterSpacing:"0.08em",textTransform:"uppercase",cursor:"pointer",transition:"all 0.2s",fontFamily:"inherit",fontWeight:genre===g.name?700:400 }}>{g.name}</button>
                 ))}
               </div>
+              {GENRES.some(g=>g.separate)&&(
+                <div style={{ marginTop:14 }}>
+                  <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.sageTeal,letterSpacing:"0.18em",marginBottom:6 }}>SPECIAL BROADCASTS</div>
+                  <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
+                    {GENRES.filter(g=>g.separate).map(g=>(
+                      <button key={g.name} onClick={()=>handleGenre(g)}
+                        style={{ background:genre===g.name?g.glow:`${C.deepBurgundy}88`,border:`1px solid ${genre===g.name?g.glow:C.roseMaroon}`,color:genre===g.name?C.black:C.paleGold,padding:mobile?"7px 14px":"8px 18px",borderRadius:4,fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",cursor:"pointer",transition:"all 0.2s",fontFamily:"'Bebas Neue',sans-serif",fontWeight:400 }}>★ {g.name}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Keyboard hints */}
               {!mobile&&(
