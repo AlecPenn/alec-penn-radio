@@ -679,10 +679,10 @@ export default function AlecPennRadio() {
           <div style={{ position:"relative",zIndex:2,background:`linear-gradient(90deg,${C.deepBurgundy}cc,#1a1208cc,${C.deepBurgundy}cc)`,borderBottom:`1px solid ${tuned?activeGlow+"33":C.deepGold+"2a"}`,padding:mobile?"7px 14px":"9px 18px",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
             <div style={{ display:"flex",alignItems:"center",gap:8 }}>
               <div style={{ width:6,height:6,borderRadius:"50%",background:tuned?C.sageTeal:C.dustyRose,animation:tuned?"on-air-blink 1.4s step-end infinite":"none" }}/>
-              <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:tuned?C.sageTeal:C.dustyRose,letterSpacing:"0.12em" }}>{tuning?"TUNING...":tuned?"ON AIR":"STANDBY"}</span>
-              {tuned&&<span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:activeGlow,letterSpacing:"0.1em",marginLeft:8 }}>· {genre.toUpperCase()} · {currentGenreObj.mood.toUpperCase()}</span>}
+              <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:9,color:tuned?C.sageTeal:C.dustyRose,letterSpacing:"0.12em" }}>{tuning?"TUNING...":tuned?"ON AIR":"STANDBY"}</span>
+              {tuned&&<span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:9,color:activeGlow,letterSpacing:"0.1em",marginLeft:8 }}>· {genre.toUpperCase()} · {currentGenreObj.mood.toUpperCase()}</span>}
             </div>
-            <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?8:11,color:C.warmGold,letterSpacing:"0.1em" }}>{timeStr}</span>
+            <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?10:11,color:C.warmGold,letterSpacing:"0.1em" }}>{timeStr}</span>
             {!mobile&&(
               <div style={{ display:"flex",gap:0 }}>
                 {[{l:"─"},{l:"□"},{l:"✕"}].map((b,i)=>(
@@ -730,7 +730,7 @@ export default function AlecPennRadio() {
               <div style={{ display:"flex",alignItems:"center",gap:16,marginBottom:20,flexWrap:"wrap" }}>
                 <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
                   <VUMeter active={tuned}/>
-                  {tuned&&analyserLive()&&<span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:8,color:activeGlow,letterSpacing:"0.14em" }}>● LIVE SIGNAL</span>}
+                  {tuned&&analyserLive()&&<span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?10:8,color:activeGlow,letterSpacing:"0.14em" }}>● LIVE SIGNAL</span>}
                 </div>
                 <button onClick={handleTuneIn} disabled={tuning}
                   style={{ background:tuned?C.burgundy:C.teal,border:"none",color:C.cream,padding:mobile?"10px 24px":"12px 32px",borderRadius:6,fontSize:mobile?12:13,fontWeight:600,letterSpacing:"0.12em",textTransform:"uppercase",cursor:tuning?"wait":"pointer",fontFamily:"'JetBrains Mono',monospace",animation:tuned?"glow-pulse 2s ease infinite":"none",transition:"background 0.4s" }}>
@@ -758,40 +758,40 @@ export default function AlecPennRadio() {
                 <div style={{ marginBottom:16,maxWidth:440 }}>
                   <div style={{ display:"flex",alignItems:"center",gap:6 }}>
                     <div style={{ width:5,height:5,borderRadius:"50%",background:activeGlow,animation:"pulse-dot 1s infinite",flexShrink:0 }}/>
-                    <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.sageTeal,letterSpacing:"0.14em" }}>NOW PLAYING · {onAirInfo.track.genre.toUpperCase()}</span>
+                    <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:9,color:C.sageTeal,letterSpacing:"0.14em" }}>NOW PLAYING · {onAirInfo.track.genre.toUpperCase()}</span>
                   </div>
                   <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:mobile?24:30,color:C.cream,letterSpacing:"0.05em",lineHeight:1.05,marginTop:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{onAirInfo.track.t}</div>
                   <div style={{ height:3,background:`${C.deepGold}22`,borderRadius:2,marginTop:8,overflow:"hidden" }}>
                     <div style={{ height:"100%",width:`${progress[1]?Math.min(100,progress[0]/progress[1]*100):0}%`,background:`linear-gradient(90deg,${C.teal},${activeGlow})`,transition:"width 0.3s linear" }}/>
                   </div>
-                  <div style={{ display:"flex",justifyContent:"space-between",marginTop:5,fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.deepGold }}>
+                  <div style={{ display:"flex",justifyContent:"space-between",marginTop:5,fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:9,color:C.deepGold }}>
                     <span>{fmtTime(progress[0])} / {fmtTime(progress[1])}</span>
                     <span style={{ color:C.mistTeal,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"65%" }}>UP NEXT · {onAirInfo.next.t}</span>
                   </div>
                   <a href={`https://edensgate.art/?q=${encodeURIComponent(onAirInfo.track.t)}`} target="_blank" rel="noreferrer"
-                    style={{ display:"inline-block",marginTop:8,fontFamily:"'JetBrains Mono',monospace",fontSize:9,letterSpacing:"0.12em",color:C.paleGold,textDecoration:"none",borderBottom:`1px solid ${C.deepGold}66`,paddingBottom:1 }}>
+                    style={{ display:"inline-block",marginTop:8,fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:9,letterSpacing:"0.12em",color:C.paleGold,textDecoration:"none",borderBottom:`1px solid ${C.deepGold}66`,paddingBottom:1 }}>
                     ↓ DOWNLOAD THIS SONG FREE AT EDEN'S GATE
                   </a>
                 </div>
               )}
               {tuned&&!onAirInfo&&(
-                <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.deepGold,marginBottom:16,letterSpacing:"0.1em" }}>LOCKING ONTO SIGNAL...</div>
+                <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:9,color:C.deepGold,marginBottom:16,letterSpacing:"0.1em" }}>LOCKING ONTO SIGNAL...</div>
               )}
 
               {/* Genre buttons */}
-              <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
+              <div style={mobile?{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }:{ display:"flex",gap:6,flexWrap:"wrap" }}>
                 {GENRES.filter(g=>!g.separate).map(g=>(
                   <button key={g.name} onClick={()=>handleGenre(g)}
-                    style={{ background:genre===g.name?g.glow:"transparent",border:`1px solid ${genre===g.name?g.glow:C.deepGold+"44"}`,color:genre===g.name?C.black:C.warmGold,padding:mobile?"5px 12px":"6px 16px",borderRadius:4,fontSize:10,letterSpacing:"0.08em",textTransform:"uppercase",cursor:"pointer",transition:"all 0.2s",fontFamily:"inherit",fontWeight:genre===g.name?700:400 }}>{g.name}</button>
+                    style={{ background:genre===g.name?g.glow:"transparent",border:`1px solid ${genre===g.name?g.glow:C.deepGold+"44"}`,color:genre===g.name?C.black:C.warmGold,padding:mobile?"12px 8px":"6px 16px",minHeight:mobile?46:undefined,borderRadius:mobile?6:4,fontSize:mobile?14:10,lineHeight:1.15,letterSpacing:"0.06em",textTransform:"uppercase",cursor:"pointer",transition:"all 0.2s",fontFamily:"inherit",fontWeight:genre===g.name?700:400 }}>{g.name}</button>
                 ))}
               </div>
               {GENRES.some(g=>g.separate)&&(
                 <div style={{ marginTop:14 }}>
-                  <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.sageTeal,letterSpacing:"0.18em",marginBottom:6 }}>SPECIAL BROADCASTS</div>
+                  <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:9,color:C.sageTeal,letterSpacing:"0.18em",marginBottom:6 }}>SPECIAL BROADCASTS</div>
                   <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
                     {GENRES.filter(g=>g.separate).map(g=>(
                       <button key={g.name} onClick={()=>handleGenre(g)}
-                        style={{ background:genre===g.name?g.glow:`${C.deepBurgundy}88`,border:`1px solid ${genre===g.name?g.glow:C.roseMaroon}`,color:genre===g.name?C.black:C.paleGold,padding:mobile?"7px 14px":"8px 18px",borderRadius:4,fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",cursor:"pointer",transition:"all 0.2s",fontFamily:"'Bebas Neue',sans-serif",fontWeight:400 }}>★ {g.name}</button>
+                        style={{ background:genre===g.name?g.glow:`${C.deepBurgundy}88`,border:`1px solid ${genre===g.name?g.glow:C.roseMaroon}`,color:genre===g.name?C.black:C.paleGold,padding:mobile?"14px 16px":"8px 18px",width:mobile?"100%":undefined,minHeight:mobile?50:undefined,borderRadius:mobile?6:4,fontSize:mobile?20:11,letterSpacing:"0.1em",textTransform:"uppercase",cursor:"pointer",transition:"all 0.2s",fontFamily:"'Bebas Neue',sans-serif",fontWeight:400 }}>★ {g.name}</button>
                     ))}
                   </div>
                 </div>
@@ -802,8 +802,8 @@ export default function AlecPennRadio() {
                 <div style={{ marginTop:12,display:"flex",gap:16 }}>
                   {[["SPACE","tune in/out"],["→","skip"],["↑↓","volume"]].map(([key,label])=>(
                     <div key={key} style={{ display:"flex",alignItems:"center",gap:4 }}>
-                      <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:8,color:C.black,background:C.deepGold,padding:"1px 5px",borderRadius:3 }}>{key}</span>
-                      <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:8,color:C.deepGold+"88" }}>{label}</span>
+                      <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?10:8,color:C.black,background:C.deepGold,padding:"1px 5px",borderRadius:3 }}>{key}</span>
+                      <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?10:8,color:C.deepGold+"88" }}>{label}</span>
                     </div>
                   ))}
                 </div>
@@ -817,7 +817,7 @@ export default function AlecPennRadio() {
                   <Turntable playing={tuned} cover={thumb} glow={activeGlow} progress={progress[1]?progress[0]/progress[1]:0} mobile={false} height={330}/>
                   <div style={{ display:"flex",gap:18,alignItems:"baseline",fontFamily:"'JetBrains Mono',monospace" }}>
                     <span style={{ fontSize:18,color:C.gold }}>{station?station.total.toLocaleString():"—"}</span>
-                    <span style={{ fontSize:9,color:C.sageTeal,letterSpacing:"0.14em" }}>TRACKS ON AIR</span>
+                    <span style={{ fontSize:mobile?11:9,color:C.sageTeal,letterSpacing:"0.14em" }}>TRACKS ON AIR</span>
                     
                   </div>
                 </div>
@@ -825,7 +825,7 @@ export default function AlecPennRadio() {
               {mobile&&(
                 <div style={{ background:"#030201",border:`1px solid ${C.deepGold}22`,borderRadius:8,padding:"12px 16px",textAlign:"center" }}>
                   <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:18,color:C.gold }}>{station?station.total.toLocaleString():"—"}</div>
-                  <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:8,color:C.sageTeal }}>TRACKS ON AIR</div>
+                  <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?10:8,color:C.sageTeal }}>TRACKS ON AIR</div>
                 </div>
               )}
               <a href="https://edensgate.art" target="_blank" rel="noreferrer"
@@ -833,7 +833,7 @@ export default function AlecPennRadio() {
                 onMouseEnter={e=>e.currentTarget.style.boxShadow=`0 8px 32px ${C.burgundy}88`}
                 onMouseLeave={e=>e.currentTarget.style.boxShadow=`0 4px 22px ${C.deepBurgundy}66`}>
                 <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:mobile?15:17,color:C.paleGold,letterSpacing:"0.15em" }}>EDEN'S GATE</div>
-                <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.dustyRose,marginTop:3 }}>Download the full library ↗</div>
+                <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:9,color:C.dustyRose,marginTop:3 }}>Download the full library ↗</div>
               </a>
             </div>
           </div>
@@ -851,7 +851,7 @@ export default function AlecPennRadio() {
         </div>
         <div style={{ display:"grid",gridTemplateColumns:mobile?"1fr":"1fr 1fr",gap:16 }}>
           <div style={{ border:`1px solid ${C.deepGold}28`,borderRadius:8,overflow:"hidden",background:"#0d0b09" }}>
-            <div style={{ padding:"10px 14px",background:`linear-gradient(90deg,${C.deepBurgundy}88,transparent)`,borderBottom:`1px solid ${C.deepGold}28`,fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.warmGold,letterSpacing:"0.15em" }}>▶ TOP 5 — ALL TIME VIEWS</div>
+            <div style={{ padding:"10px 14px",background:`linear-gradient(90deg,${C.deepBurgundy}88,transparent)`,borderBottom:`1px solid ${C.deepGold}28`,fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:9,color:C.warmGold,letterSpacing:"0.15em" }}>▶ TOP 5 — ALL TIME VIEWS</div>
             {loadingYT?<div style={{ padding:20,fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.deepGold,textAlign:"center" }}>LOADING SIGNAL...</div>
               :topVideos.length>0?topVideos.map((item,i)=><ChartRow key={item.id} item={item} rank={i+1}/>)
               :<div style={{ padding:20,fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.dustyRose,textAlign:"center" }}>NO DATA</div>}
@@ -860,7 +860,7 @@ export default function AlecPennRadio() {
             </div>
           </div>
           <div style={{ border:`1px solid ${C.teal}44`,borderRadius:8,overflow:"hidden",background:"#0d0b09",display:"flex",flexDirection:"column" }}>
-            <div style={{ padding:"10px 14px",background:`linear-gradient(90deg,${C.teal}44,transparent)`,borderBottom:`1px solid ${C.teal}33`,fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.sageTeal,letterSpacing:"0.15em",display:"flex",alignItems:"center",gap:8 }}>
+            <div style={{ padding:"10px 14px",background:`linear-gradient(90deg,${C.teal}44,transparent)`,borderBottom:`1px solid ${C.teal}33`,fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:9,color:C.sageTeal,letterSpacing:"0.15em",display:"flex",alignItems:"center",gap:8 }}>
               <div style={{ width:5,height:5,borderRadius:"50%",background:C.sageTeal,animation:"pulse-dot 1s infinite" }}/>
               FRESH DROP — LATEST UPLOAD
             </div>
@@ -870,7 +870,7 @@ export default function AlecPennRadio() {
                 <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.sageTeal,marginBottom:12 }}>AI co-created with Suno · Free to use</div>
                 <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
                   {["Lo-Fi","Ambient","Soul","Jazz"].map(tag=>(
-                    <span key={tag} style={{ background:`${C.teal}22`,border:`1px solid ${C.teal}44`,color:C.mistTeal,fontSize:9,padding:"2px 8px",borderRadius:20,fontFamily:"'JetBrains Mono',monospace" }}>{tag}</span>
+                    <span key={tag} style={{ background:`${C.teal}22`,border:`1px solid ${C.teal}44`,color:C.mistTeal,fontSize:mobile?11:9,padding:"2px 8px",borderRadius:20,fontFamily:"'JetBrains Mono',monospace" }}>{tag}</span>
                   ))}
                 </div>
               </div>
@@ -923,7 +923,7 @@ export default function AlecPennRadio() {
             <a href="https://edensgate.art" target="_blank" rel="noreferrer" style={{ background:"transparent",color:C.paleGold,padding:mobile?"12px 20px":"14px 32px",borderRadius:6,textDecoration:"none",fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:12,letterSpacing:"0.1em",border:`1px solid ${C.deepGold}55` }}>Eden's Gate ↗</a>
           </div>
           {!mobile&&(
-            <div style={{ marginTop:24,fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.deepGold+"55",letterSpacing:"0.1em" }}>
+            <div style={{ marginTop:24,fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:9,color:C.deepGold+"55",letterSpacing:"0.1em" }}>
               PSST — TRY TYPING A SECRET CODE ON YOUR KEYBOARD
             </div>
           )}
@@ -936,11 +936,11 @@ export default function AlecPennRadio() {
           <WaveSeal size={28} color={C.deepGold}/>
           <div style={{ display:"flex",flexDirection:"column",lineHeight:1.1 }}>
             <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:11,color:C.deepGold,letterSpacing:"0.14em" }}>ALEC PENN</span>
-            <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:9,color:C.warmGold,letterSpacing:"0.28em" }}>RADIO</span>
+            <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:mobile?11:9,color:C.warmGold,letterSpacing:"0.28em" }}>RADIO</span>
           </div>
         </div>
-        {!mobile&&<div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.roseMaroon,letterSpacing:"0.1em" }}>AI CO-CREATED · FREE TO USE · NO GATEKEEPERS</div>}
-        <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:`${C.deepGold}66` }}>© 2026 ALEC PENN RADIO</div>
+        {!mobile&&<div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:9,color:C.roseMaroon,letterSpacing:"0.1em" }}>AI CO-CREATED · FREE TO USE · NO GATEKEEPERS</div>}
+        <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:9,color:`${C.deepGold}66` }}>© 2026 ALEC PENN RADIO</div>
       </footer>
 
       <ArchiveRadio playing={tuned} channel={activeChannel} volume={volume} onTrack={handleTrack} onProgress={handleProgress}/>
