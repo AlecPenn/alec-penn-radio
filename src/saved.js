@@ -98,14 +98,14 @@ export async function localUrlFor(track) {
 }
 
 // Save many songs one after another (for "save the next 3 hours" / "save the whole station").
-export async function saveMany(tracks, onStep = () => {}, signal) {
+export async function saveMany(tracks, onStep = () => {}, signal, kind = "radio") {
   const have = savedKeys();
   const todo = tracks.filter((t, i, a) => !have.has(keyOf(t)) && a.findIndex((x) => keyOf(x) === keyOf(t)) === i);
   let done = 0, bytes = 0, failed = 0;
   onStep({ done, total: todo.length, bytes, failed });
   for (const t of todo) {
     if (signal?.aborted) break;
-    try { const e = await saveSong(t, () => {}, "radio", signal); bytes += e.bytes || 0; }
+    try { const e = await saveSong(t, () => {}, kind, signal); bytes += e.bytes || 0; }
     catch (e) { if (signal?.aborted) break; failed++; }
     done++;
     onStep({ done, total: todo.length, bytes, failed });
@@ -117,7 +117,28 @@ export async function clearRadio() {
   const cache = await caches.open(BUCKET);
   const keep = [];
   for (const s of listSaved()) {
-    if (s.kind === "radio") await cache.delete(s.key); else keep.push(s);
+    if (s.kind === "radio" || s.kind === "auto") await cache.delete(s.key); else keep.push(s);
   }
   writeList(keep);
 }
+
+// Auto-saved songs (kept ahead of whatever you're listening to) are capped so they never eat the phone.
+export const AUTO_CAP = 600e6;
+export async function pruneAuto(protect = new Set(), cap = AUTO_CAP) {
+  const list = listSaved();
+  const autos = list.filter((s) => s.kind === "auto").sort((a, b) => b.at - a.at);
+  let total = 0; const drop = new Set();
+  for (const s of autos) {
+    total += s.bytes || 0;
+    if (total > cap && !protect.has(s.key)) drop.add(s.key);
+  }
+  if (!drop.size) return 0;
+  const cache = await caches.open(BUCKET);
+  for (const k of drop) await cache.delete(k);
+  writeList(listSaved().filter((s) => !drop.has(s.key)));
+  return drop.size;
+}
+
+// How far ahead to keep saved while listening: "0" (off), "60" or "180" minutes.
+export function autoMinutes() { try { const v = localStorage.getItem("aprAuto"); return v === null ? 60 : Number(v); } catch (e) { return 60; } }
+export function setAutoMinutes(m) { try { localStorage.setItem("aprAuto", String(m)); } catch (e) {} window.dispatchEvent(new Event("apr-saved")); }

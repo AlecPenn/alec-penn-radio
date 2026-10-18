@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getLatestVideos, getTopVideos, getTopShorts, formatViews } from "./youtube.js";
 import { loadStation, onAir, audioUrl, gainMul, upcoming, offlineCoverage } from "./station.js";
-import { savedKeys, localUrlFor, keyOf, saveMany, supported as offlineSupported } from "./saved.js";
+import { savedKeys, localUrlFor, keyOf, saveMany, pruneAuto, autoMinutes, setAutoMinutes, supported as offlineSupported } from "./saved.js";
 import { canAnalyse, attach as attachAnalyser, resume as resumeAnalyser, detach as detachAnalyser, getWave, getBands, getBass, live as analyserLive } from "./analyser.js";
 
 const C = {
@@ -225,8 +225,35 @@ function useOfflineCoverage(channel){
   },[channel]);
   return cover;
 }
+
+// While someone is listening, quietly keep the next stretch of the station saved on the phone,
+// so if the signal (or the power) drops, the radio just keeps going. Songs then play from the phone,
+// so this costs about the same data as streaming, plus the lead you keep ahead.
+function useAutoBuffer(channel, listening){
+  const busy=useRef(false), ctrl=useRef(null);
+  useEffect(()=>{
+    if(!channel||!listening||!offlineSupported()) return;
+    let alive=true;
+    const run=async()=>{
+      const mins=autoMinutes();
+      if(!alive||busy.current||!navigator.onLine||mins<=0) return;
+      const conn=navigator.connection;
+      const lead=conn&&conn.saveData?Math.min(mins,15):mins;      // respect "data saver" phones
+      const ahead=upcoming(channel,Date.now()/1000,lead*60).map(u=>u.track);
+      busy.current=true; const c=new AbortController(); ctrl.current=c;
+      try{ await saveMany(ahead,()=>{},c.signal,"auto"); await pruneAuto(new Set(ahead.map(keyOf))); }catch(e){}
+      busy.current=false;
+    };
+    const t=setTimeout(run,4000);          // let the song start first
+    const iv=setInterval(run,90000);       // top up as the schedule moves on
+    const on=()=>run(); window.addEventListener("online",on);
+    return()=>{ alive=false; clearTimeout(t); clearInterval(iv); window.removeEventListener("online",on); ctrl.current?.abort(); busy.current=false; };
+  },[channel,listening]);
+}
+
 function OfflineSaver({ channel, name, mobile, glow }){
   const cover=useOfflineCoverage(channel);
+  const [auto,setAuto]=useState(autoMinutes);
   const [job,setJob]=useState(null);     // {done,total,bytes,failed,label}
   const ctrl=useRef(null);
   const [online,setOnline]=useState(navigator.onLine);
@@ -267,6 +294,7 @@ function OfflineSaver({ channel, name, mobile, glow }){
             {wholeSaved?"✓ The whole station is on this phone. It plays live with no signal, any time."
               :cover>=3600?`✓ Ready offline until ${fmtUntil(cover)}. Lose signal and the radio keeps playing, live and in sync.`
               :cover>60?`On this phone until ${fmtUntil(cover)}. Save more to stay covered longer.`
+              :auto>0?`Tune in and the next ${auto===60?"hour":"3 hours"} saves itself in the background, so a dropped signal won’t stop the music. Or save ahead now:`
               :"Save the songs coming up next and this station keeps playing live with no signal: planes, basements, road trips."}
             {job?.finished&&job.failed>0&&<span style={{ color:C.dustyRose }}> {job.failed} songs didn’t download; tap save again to retry.</span>}
           </div>
@@ -283,6 +311,13 @@ function OfflineSaver({ channel, name, mobile, glow }){
             </div>
           )}
           {!online&&cover<60&&<div style={{ fontFamily:mono,fontSize:mobile?11:9,color:C.dustyRose }}>No signal right now. Save while you’re on Wi-Fi.</div>}
+          <div style={{ display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",borderTop:`1px solid ${C.deepGold}33`,paddingTop:10 }}>
+            <span style={{ fontFamily:mono,fontSize:mobile?11:9,color:C.sageTeal,letterSpacing:"0.12em",flex:"1 1 160px" }}>AUTO-SAVE AHEAD WHILE YOU LISTEN</span>
+            {[[0,"OFF"],[60,"1 HR"],[180,"3 HRS"]].map(([m,l])=>(
+              <button key={m} aria-pressed={auto===m} onClick={()=>{ setAutoMinutes(m); setAuto(m); }}
+                style={{ ...btn(auto===m), minHeight:mobile?40:30, padding:"0 12px", fontSize:mobile?12:10 }}>{l}</button>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -605,6 +640,7 @@ export default function AlecPennRadio() {
     if(g){ setGenre(g.name); setActiveGlow(g.glow); setLinked(g.name); }
   }).catch(e=>console.error("station.json",e)); },[]);
   const activeChannel=station?(genre==="Full Station"?station.all:station.channels.find(c=>c.name===genre)||station.all):null;
+  useAutoBuffer(activeChannel,tuned);
   const [offlineEmpty,setOfflineEmpty]=useState(false);
   const handleTrack=useCallback((info)=>{ if(info.unavailable){ setOfflineEmpty(true); return; } setOfflineEmpty(false); setOnAirInfo(info); setNowPlaying(info.track.t); setThumb(info.track.cover); },[]);
   const handleProgress=useCallback((cur,dur)=>setProgress([cur,dur]),[]);

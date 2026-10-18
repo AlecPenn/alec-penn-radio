@@ -25,8 +25,8 @@ export default function Saved() {
   const [online, setOnline] = useState(navigator.onLine);
   const [tab, setTab] = useState(() => (listSaved().length ? "saved" : "find"));
   const [allSaved, setSaved] = useState(listSaved);
-  const saved = useMemo(() => allSaved.filter((s) => s.kind !== "radio"), [allSaved]);      // songs you picked
-  const radioSaved = useMemo(() => allSaved.filter((s) => s.kind === "radio"), [allSaved]); // kept for offline radio
+  const saved = useMemo(() => allSaved.filter((s) => s.kind !== "radio" && s.kind !== "auto"), [allSaved]);      // songs you picked
+  const radioSaved = useMemo(() => allSaved.filter((s) => s.kind === "radio" || s.kind === "auto"), [allSaved]); // kept for offline radio
   const [clearing, setClearing] = useState(false);
   const [all, setAll] = useState([]);
   const [stations, setStations] = useState([]);
