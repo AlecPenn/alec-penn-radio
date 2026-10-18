@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getLatestVideos, getTopVideos, getTopShorts, formatViews } from "./youtube.js";
-import { loadStation, onAir, audioUrl, gainMul } from "./station.js";
+import { loadStation, onAir, audioUrl, gainMul, upcoming, offlineCoverage } from "./station.js";
+import { savedKeys, localUrlFor, keyOf, saveMany, supported as offlineSupported } from "./saved.js";
 import { canAnalyse, attach as attachAnalyser, resume as resumeAnalyser, detach as detachAnalyser, getWave, getBands, getBass, live as analyserLive } from "./analyser.js";
 
 const C = {
@@ -126,13 +127,28 @@ function ArchiveRadio({ playing, channel, volume, onTrack, onProgress }) {
     if(a) a.volume=Math.max(0,Math.min(1,(volRef.current/100)*(info?gainMul(info.track):0.7)));
   };
 
-  const tune=useCallback(()=>{
+  const urlRef=useRef(null);
+  const tokenRef=useRef(0);
+  const tune=useCallback(async()=>{
     const a=audioRef.current, ch=chanRef.current;
     if(!a||!ch||!ch.tracks?.length) return;
-    let info=onAir(ch,Date.now()/1000+skewRef.current);
-    if(info.remaining<2){ skewRef.current+=info.remaining+0.1; info=onAir(ch,Date.now()/1000+skewRef.current); }
+    const token=++tokenRef.current;
+    const has=savedKeys();
+    const now=()=>Date.now()/1000+skewRef.current;
+    let info=onAir(ch,now());
+    if(info.remaining<2){ skewRef.current+=info.remaining+0.1; info=onAir(ch,now()); }
+    if(!navigator.onLine&&!has.has(keyOf(info.track))){
+      // No signal and this song isn't on the phone: jump ahead to the next one that is.
+      let guard=0;
+      while(guard++<600&&!has.has(keyOf(info.track))){ skewRef.current+=info.remaining+0.1; info=onAir(ch,now()); }
+      if(!has.has(keyOf(info.track))){ a.pause(); onTrack?.({...info,unavailable:true}); return; }
+    }
     infoRef.current=info;
-    a.src=audioUrl(info.track);
+    const local=has.has(keyOf(info.track))?await localUrlFor(info.track):null;  // saved songs play from the phone
+    if(token!==tokenRef.current) return;
+    if(urlRef.current){ URL.revokeObjectURL(urlRef.current); urlRef.current=null; }
+    if(local) urlRef.current=local;
+    a.src=local||audioUrl(info.track);
     a.dataset.offset=String(info.offset);
     applyVolume();
     onTrack?.(info);
@@ -191,6 +207,86 @@ function ArchiveRadio({ playing, channel, volume, onTrack, onProgress }) {
   },[tune]);
 
   return null;
+}
+
+
+/* ── OFFLINE: save the next few hours of a station so the live radio keeps going with no signal ── */
+const BYTES_PER_SEC=23000;   // ~180 kbps MP3s
+const fmtMB=(b)=>b>=1e9?(b/1e9).toFixed(1)+" GB":Math.max(1,Math.round(b/1e6))+" MB";
+const fmtUntil=(sec)=>new Date(Date.now()+sec*1000).toLocaleTimeString([], { hour:"numeric", minute:"2-digit" });
+function useOfflineCoverage(channel){
+  const [cover,setCover]=useState(0);
+  useEffect(()=>{
+    if(!channel||!offlineSupported()) return;
+    const calc=()=>{ const has=savedKeys(); setCover(offlineCoverage(channel,(t)=>has.has(keyOf(t)))); };
+    calc(); const iv=setInterval(calc,30000);
+    window.addEventListener("apr-saved",calc);
+    return()=>{ clearInterval(iv); window.removeEventListener("apr-saved",calc); };
+  },[channel]);
+  return cover;
+}
+function OfflineSaver({ channel, name, mobile, glow }){
+  const cover=useOfflineCoverage(channel);
+  const [job,setJob]=useState(null);     // {done,total,bytes,failed,label}
+  const ctrl=useRef(null);
+  const [online,setOnline]=useState(navigator.onLine);
+  useEffect(()=>{const on=()=>setOnline(true),off=()=>setOnline(false);window.addEventListener("online",on);window.addEventListener("offline",off);return()=>{window.removeEventListener("online",on);window.removeEventListener("offline",off);};},[]);
+  useEffect(()=>()=>ctrl.current?.abort(),[]);
+  if(!channel||!offlineSupported()) return null;
+  const isAll=channel.slug==="all";
+  const ahead=upcoming(channel,Date.now()/1000,3*3600).map(u=>u.track);
+  const has=savedKeys();
+  const aheadNeed=ahead.filter(t=>!has.has(keyOf(t)));
+  const aheadMB=aheadNeed.reduce((a,t)=>a+t.s*BYTES_PER_SEC,0);
+  const allNeed=isAll?[]:channel.tracks.filter(t=>!has.has(keyOf(t)));
+  const allMB=allNeed.reduce((a,t)=>a+t.s*BYTES_PER_SEC,0);
+  const run=async(tracks,label)=>{
+    ctrl.current?.abort(); const c=new AbortController(); ctrl.current=c;
+    setJob({done:0,total:tracks.length,bytes:0,failed:0,label});
+    try{ await navigator.storage?.persist?.(); }catch(e){}
+    const r=await saveMany(tracks,(st)=>setJob({...st,label}),c.signal);
+    setJob(c.signal.aborted?null:{...r,label,finished:true});
+  };
+  const mono="'JetBrains Mono',monospace";
+  const btn=(primary)=>({ fontFamily:mono,fontSize:mobile?13:11,fontWeight:700,letterSpacing:"0.08em",minHeight:mobile?46:36,padding:"0 14px",borderRadius:6,cursor:"pointer",
+    border:`1px solid ${primary?glow:C.deepGold+"66"}`,background:primary?glow:"transparent",color:primary?C.black:C.warmGold });
+  const wholeSaved=!isAll&&allNeed.length===0;
+  return (
+    <div style={{ marginTop:14,border:`1px solid ${C.deepGold}44`,borderRadius:8,padding:mobile?"12px":"10px 14px",background:`${C.black}aa` }}>
+      <div style={{ fontFamily:mono,fontSize:mobile?11:9,color:C.sageTeal,letterSpacing:"0.18em",marginBottom:8 }}>OFFLINE RADIO · {name.toUpperCase()}</div>
+      {job&&!job.finished?(
+        <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+          <div style={{ fontFamily:mono,fontSize:mobile?13:11,color:C.cream }}>Saving {job.label}: {job.done} / {job.total} songs · {fmtMB(job.bytes)}</div>
+          <div style={{ height:8,borderRadius:4,background:`${C.deepGold}33`,overflow:"hidden" }}><div style={{ height:8,width:`${job.total?Math.round(job.done/job.total*100):0}%`,background:glow,transition:"width 0.3s" }}/></div>
+          <div style={{ fontFamily:mono,fontSize:mobile?11:9,color:C.deepGold }}>Keep this page open until it finishes. Wi-Fi recommended.</div>
+          <button onClick={()=>{ctrl.current?.abort();setJob(null);}} style={{...btn(false),alignSelf:"flex-start"}}>CANCEL</button>
+        </div>
+      ):(
+        <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+          <div style={{ fontFamily:mono,fontSize:mobile?13:11,lineHeight:1.5,color:cover>60?C.paleGold:C.cream }}>
+            {wholeSaved?"✓ The whole station is on this phone. It plays live with no signal, any time."
+              :cover>=3600?`✓ Ready offline until ${fmtUntil(cover)}. Lose signal and the radio keeps playing, live and in sync.`
+              :cover>60?`On this phone until ${fmtUntil(cover)}. Save more to stay covered longer.`
+              :"Save the songs coming up next and this station keeps playing live with no signal: planes, basements, road trips."}
+            {job?.finished&&job.failed>0&&<span style={{ color:C.dustyRose }}> {job.failed} songs didn’t download; tap save again to retry.</span>}
+          </div>
+          {!wholeSaved&&(
+            <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
+              <button disabled={!online||aheadNeed.length===0} onClick={()=>run(ahead,"the next 3 hours")} style={{...btn(true),opacity:online&&aheadNeed.length?1:0.45}}>
+                {aheadNeed.length?`⬇ SAVE NEXT 3 HOURS · ${fmtMB(aheadMB)}`:"✓ NEXT 3 HOURS SAVED"}
+              </button>
+              {!isAll&&(
+                <button disabled={!online} onClick={()=>run(channel.tracks,"the whole station")} style={{...btn(false),opacity:online?1:0.45}}>
+                  ⬇ WHOLE STATION · {allNeed.length} SONGS · {fmtMB(allMB)}
+                </button>
+              )}
+            </div>
+          )}
+          {!online&&cover<60&&<div style={{ fontFamily:mono,fontSize:mobile?11:9,color:C.dustyRose }}>No signal right now. Save while you’re on Wi-Fi.</div>}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /* ── PARTICLES ── */
@@ -509,7 +605,8 @@ export default function AlecPennRadio() {
     if(g){ setGenre(g.name); setActiveGlow(g.glow); setLinked(g.name); }
   }).catch(e=>console.error("station.json",e)); },[]);
   const activeChannel=station?(genre==="Full Station"?station.all:station.channels.find(c=>c.name===genre)||station.all):null;
-  const handleTrack=useCallback((info)=>{ setOnAirInfo(info); setNowPlaying(info.track.t); setThumb(info.track.cover); },[]);
+  const [offlineEmpty,setOfflineEmpty]=useState(false);
+  const handleTrack=useCallback((info)=>{ if(info.unavailable){ setOfflineEmpty(true); return; } setOfflineEmpty(false); setOnAirInfo(info); setNowPlaying(info.track.t); setThumb(info.track.cover); },[]);
   const handleProgress=useCallback((cur,dur)=>setProgress([cur,dur]),[]);
   useEffect(()=>{const f=()=>setScrollY(window.scrollY);window.addEventListener("scroll",f,{passive:true});return()=>window.removeEventListener("scroll",f);},[]);
 
@@ -674,7 +771,9 @@ export default function AlecPennRadio() {
       </nav>
       {!online&&(
         <a href="/saved" style={{ display:"block",position:"relative",zIndex:48,background:C.burgundy,color:C.cream,textDecoration:"none",textAlign:"center",padding:"12px 16px",fontFamily:"'JetBrains Mono',monospace",fontSize:13,letterSpacing:"0.06em" }}>
-          NO SIGNAL · THE LIVE RADIO NEEDS INTERNET. <b style={{ color:C.paleGold }}>YOUR SAVED SONGS STILL PLAY →</b>
+          {offlineEmpty
+            ?<>NO SIGNAL · NOTHING FROM {genre.toUpperCase()} IS SAVED ON THIS PHONE. <b style={{ color:C.paleGold }}>PLAY YOUR SAVED SONGS →</b></>
+            :<>NO SIGNAL · STATIONS YOU SAVED STILL PLAY LIVE. <b style={{ color:C.paleGold }}>SAVED SONGS →</b></>}
         </a>
       )}
 
@@ -821,6 +920,8 @@ export default function AlecPennRadio() {
                   </div>
                 </div>
               )}
+
+              <OfflineSaver channel={activeChannel} name={genre} mobile={mobile} glow={activeGlow}/>
 
               {/* Keyboard hints */}
               {!mobile&&(

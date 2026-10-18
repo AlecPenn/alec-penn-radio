@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { loadStation } from "./station.js";
-import { listSaved, saveSong, removeSong, localUrl, reconcile, storageInfo, keyOf, supported } from "./saved.js";
+import { listSaved, saveSong, removeSong, localUrl, reconcile, storageInfo, keyOf, supported, clearRadio } from "./saved.js";
 
 const C = { black:"#0A0806", panel:"#141008", line:"#9E7F3533", gold:"#C2A24D", warm:"#D4B96A", pale:"#EBD9A0",
   teal:"#2F6F6D", sage:"#5E9E9C", cream:"#F4F1EC", rose:"#C49AAA", burg:"#5B2A3C" };
@@ -24,7 +24,10 @@ const btn = (extra = {}) => ({ fontFamily: mono, fontSize: 14, fontWeight: 700, 
 export default function Saved() {
   const [online, setOnline] = useState(navigator.onLine);
   const [tab, setTab] = useState(() => (listSaved().length ? "saved" : "find"));
-  const [saved, setSaved] = useState(listSaved);
+  const [allSaved, setSaved] = useState(listSaved);
+  const saved = useMemo(() => allSaved.filter((s) => s.kind !== "radio"), [allSaved]);      // songs you picked
+  const radioSaved = useMemo(() => allSaved.filter((s) => s.kind === "radio"), [allSaved]); // kept for offline radio
+  const [clearing, setClearing] = useState(false);
   const [all, setAll] = useState([]);
   const [stations, setStations] = useState([]);
   const [q, setQ] = useState("");
@@ -207,6 +210,15 @@ export default function Saved() {
                 <Seal size={64} />
                 <p style={{ fontSize: 16, margin: "18px auto 18px", maxWidth: 380 }}>Nothing saved yet. Save songs here and they’ll play anywhere: the gym basement, a flight, a road trip with no signal.</p>
                 <button onClick={() => setTab("find")} style={btn({ background: C.gold, color: C.black, border: "none" })}>FIND SONGS TO SAVE</button>
+              </div>
+            )}
+
+            {radioSaved.length > 0 && (
+              <div style={{ marginTop: 20, border: `1px solid ${C.line}`, borderRadius: 10, padding: 14, fontSize: 13, lineHeight: 1.5, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                <span style={{ flex: "1 1 240px" }}><b style={{ color: C.gold }}>Offline radio:</b> {radioSaved.length} more songs ({mb(radioSaved.reduce((a, s) => a + (s.bytes || 0), 0))}) are kept so your saved stations play live with no signal.</span>
+                {clearing
+                  ? <button onClick={async () => { await clearRadio(); setClearing(false); }} style={btn({ color: C.cream, background: C.burg, border: "none", fontSize: 12 })}>YES, CLEAR THEM</button>
+                  : <button onClick={() => setClearing(true)} style={btn({ fontSize: 12 })}>FREE UP SPACE</button>}
               </div>
             )}
           </section>

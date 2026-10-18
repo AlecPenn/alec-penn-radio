@@ -18,8 +18,15 @@ export const isSaved = (t) => listSaved().some((s) => s.key === keyOf(t));
 export const supported = () => typeof caches !== "undefined";
 
 // Save one song: download it with a progress callback, keep the MP3 and its cover.
-export async function saveSong(t, onProgress = () => {}) {
-  const res = await fetch(audioUrl(t));
+// kind "song" = picked by the listener (shows in Saved); "radio" = kept so the live radio works offline.
+export async function saveSong(t, onProgress = () => {}, kind = "song", signal) {
+  const existing = listSaved().find((s) => s.key === keyOf(t));
+  if (existing) {   // already on the phone: no second download
+    if (kind === "song" && existing.kind === "radio") writeList(listSaved().map((s) => (s.key === existing.key ? { ...s, kind: "song" } : s)));
+    onProgress(1);
+    return existing;
+  }
+  const res = await fetch(audioUrl(t), { signal });
   if (!res.ok) throw new Error("download failed (" + res.status + ")");
   const total = Number(res.headers.get("content-length")) || 0;
   let blob;
@@ -38,7 +45,7 @@ export async function saveSong(t, onProgress = () => {}) {
   await cache.put(keyOf(t), new Response(blob, { headers: { "Content-Type": "audio/mpeg", "Content-Length": String(blob.size) } }));
   try { const c = await fetch(t.cover); if (c.ok) await cache.put(t.cover, c); } catch (e) {}
   try { await navigator.storage?.persist?.(); } catch (e) {}  // ask the phone not to clear it
-  const entry = { key: keyOf(t), t: t.t, f: t.f, ia: t.ia, genre: t.genre, cover: t.cover, s: t.s, g: t.g, bytes: blob.size, at: Date.now() };
+  const entry = { key: keyOf(t), t: t.t, f: t.f, ia: t.ia, genre: t.genre, cover: t.cover, s: t.s, g: t.g, bytes: blob.size, at: Date.now(), kind };
   writeList([entry, ...listSaved().filter((s) => s.key !== entry.key)]);
   onProgress(1);
   return entry;
@@ -79,4 +86,38 @@ export async function reconcile() {
 
 export async function storageInfo() {
   try { const e = await navigator.storage.estimate(); return { used: e.usage || 0, quota: e.quota || 0 }; } catch (e) { return null; }
+}
+
+// Fast "is this song on the phone?" check for the live radio.
+export const savedKeys = () => new Set(listSaved().map((s) => s.key));
+export async function localUrlFor(track) {
+  try {
+    const res = await (await caches.open(BUCKET)).match(keyOf(track));
+    return res ? URL.createObjectURL(await res.blob()) : null;
+  } catch (e) { return null; }
+}
+
+// Save many songs one after another (for "save the next 3 hours" / "save the whole station").
+export async function saveMany(tracks, onStep = () => {}, signal) {
+  const have = savedKeys();
+  const todo = tracks.filter((t, i, a) => !have.has(keyOf(t)) && a.findIndex((x) => keyOf(x) === keyOf(t)) === i);
+  let done = 0, bytes = 0, failed = 0;
+  onStep({ done, total: todo.length, bytes, failed });
+  for (const t of todo) {
+    if (signal?.aborted) break;
+    try { const e = await saveSong(t, () => {}, "radio", signal); bytes += e.bytes || 0; }
+    catch (e) { if (signal?.aborted) break; failed++; }
+    done++;
+    onStep({ done, total: todo.length, bytes, failed });
+  }
+  return { done, total: todo.length, bytes, failed };
+}
+
+export async function clearRadio() {
+  const cache = await caches.open(BUCKET);
+  const keep = [];
+  for (const s of listSaved()) {
+    if (s.kind === "radio") await cache.delete(s.key); else keep.push(s);
+  }
+  writeList(keep);
 }

@@ -84,3 +84,25 @@ export function audioUrl(track) {
 export function gainMul(track) {
   return Math.pow(10, ((track.g || 0) - 3) / 20);
 }
+
+// Everything scheduled on this channel from `now` for the next `seconds` (for saving ahead).
+export function upcoming(channel, now, seconds) {
+  const out = []; let t = now; const end = now + seconds; let guard = 0;
+  while (t < end && guard++ < 3000) {
+    const info = onAir(channel, t);
+    out.push({ track: info.track, start: t - info.offset });
+    t += info.remaining + 0.01;
+  }
+  return out;
+}
+
+// How long the radio can keep playing from songs already on the phone, starting now (seconds).
+export function offlineCoverage(channel, has, now = Date.now() / 1000, limit = 7 * 86400) {
+  let t = now, guard = 0;
+  while (t < now + limit && guard++ < 20000) {
+    const info = onAir(channel, t);
+    if (!has(info.track)) return t - now;
+    t += info.remaining + 0.01;
+  }
+  return limit;
+}
