@@ -1,7 +1,7 @@
 // Alec Penn Radio — offline support.
 // 1. Keeps a copy of the app itself so it opens with no signal.
 // 2. Serves songs the listener saved (stored under /saved-audio/...) straight from the phone.
-const APP = "apr-app-v1";        // the app's own files
+const APP = "apr-app-v2";        // the app's own files
 const SAVED = "apr-saved-v1";    // songs + covers the listener chose to keep (never auto-deleted)
 const ART = "apr-art-v1";        // covers and fonts seen while browsing
 
@@ -73,7 +73,10 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(req.url);
   if (url.origin === location.origin) {
     if (url.pathname.startsWith("/saved-audio/")) return e.respondWith(savedSong(req));
-    if (req.mode === "navigate") return e.respondWith(networkFirst(req, APP, "/"));   // every page is the same app
+    if (req.mode === "navigate") {
+      if (/\.html?$/.test(url.pathname) && url.pathname !== "/index.html") return;   // stand-alone pages (e.g. /soundtest.html): leave alone
+      return e.respondWith(networkFirst(req, APP, "/"));   // every app page is the same app
+    }
     if (url.pathname === "/station.json") return e.respondWith(networkFirst(req, APP));
     if (url.pathname.startsWith("/assets/") || url.pathname.startsWith("/icons/")) return e.respondWith(cacheFirst(req, APP));
     if (url.pathname.startsWith("/covers/")) return e.respondWith(cacheFirst(req, ART));
