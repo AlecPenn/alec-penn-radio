@@ -481,6 +481,8 @@ export default function AlecPennRadio() {
   const [station,setStation]=useState(null);
   const [genre,setGenre]=useState(GENRES[0].name);
   const [linked,setLinked]=useState(null);
+  const [online,setOnline]=useState(navigator.onLine);
+  useEffect(()=>{const on=()=>setOnline(true),off=()=>setOnline(false);window.addEventListener("online",on);window.addEventListener("offline",off);return()=>{window.removeEventListener("online",on);window.removeEventListener("offline",off);};},[]);
   const [activeGlow,setActiveGlow]=useState(GENRES[0].glow);
   const [onAirInfo,setOnAirInfo]=useState(null);
   const [progress,setProgress]=useState([0,0]);
@@ -644,6 +646,7 @@ export default function AlecPennRadio() {
             </div>
             <div style={{ display:"flex",gap:16,alignItems:"center" }}>
               
+              <a href="/saved" className="nav-link" style={{ color:C.gold }}>♥ Saved</a>
               <a href="#broadcast" className="nav-link">Broadcast</a>
               <a href="#charts" className="nav-link">Charts</a>
               <a href="#mission" className="nav-link">Mission</a>
@@ -662,12 +665,18 @@ export default function AlecPennRadio() {
         )}
         {mobile&&(
           <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+            <a href="/saved" aria-label="Saved songs, play offline" style={{ color:C.gold,border:`1px solid ${C.gold}66`,padding:"8px 10px",borderRadius:4,fontSize:11,letterSpacing:"0.08em",textDecoration:"none",fontFamily:"'JetBrains Mono',monospace" }}>♥ SAVED</a>
             
             <a href={YT} target="_blank" rel="noreferrer" style={{ background:C.burgundy,color:C.cream,padding:"4px 12px",borderRadius:4,fontSize:10,letterSpacing:"0.08em",textDecoration:"none",fontFamily:"'JetBrains Mono',monospace",border:`1px solid ${C.roseMaroon}` }}>YT ↗</a>
             <button onClick={()=>setMenuOpen(o=>!o)} style={{ background:"transparent",border:`1px solid ${C.deepGold}44`,color:C.warmGold,padding:"6px 10px",borderRadius:4,cursor:"pointer",fontFamily:"'JetBrains Mono',monospace",fontSize:14 }}>{menuOpen?"✕":"≡"}</button>
           </div>
         )}
       </nav>
+      {!online&&(
+        <a href="/saved" style={{ display:"block",position:"relative",zIndex:48,background:C.burgundy,color:C.cream,textDecoration:"none",textAlign:"center",padding:"12px 16px",fontFamily:"'JetBrains Mono',monospace",fontSize:13,letterSpacing:"0.06em" }}>
+          NO SIGNAL · THE LIVE RADIO NEEDS INTERNET. <b style={{ color:C.paleGold }}>YOUR SAVED SONGS STILL PLAY →</b>
+        </a>
+      )}
 
       {mobile&&menuOpen&&(
         <div style={{ background:`${C.black}f8`,backdropFilter:"blur(14px)",borderBottom:`1px solid ${C.deepGold}22`,padding:"16px",display:"flex",flexDirection:"column",gap:12,position:"relative",zIndex:49 }}>
