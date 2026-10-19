@@ -3,6 +3,9 @@
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
+import deckUrl from "./assets/turntable.glb?url";
 
 const GOLD = 0xc2a24d, BLACK = 0x0a0806;
 
@@ -82,7 +85,7 @@ export function createTurntable(canvas, { mobile = false, getBass = () => 0 } = 
   platter.position.set(-0.45, 0.08, 0); deck.add(platter);
 
   // record (spins)
-  const spin = new THREE.Group(); spin.position.set(-0.45, 0.17, 0); deck.add(spin);
+  let spin = new THREE.Group(); spin.position.set(-0.45, 0.17, 0); deck.add(spin);
   const vinyl = new THREE.Mesh(new THREE.CylinderGeometry(1.62, 1.62, 0.025, 128),
     [new THREE.MeshPhysicalMaterial({ color: 0x0c0b0a, roughness: 0.4, clearcoat: 1, clearcoatRoughness: 0.2 }),
      new THREE.MeshPhysicalMaterial({ map: grooveTexture(), roughness: 0.38, metalness: 0.2, clearcoat: 1, clearcoatRoughness: 0.25 }),
@@ -102,18 +105,43 @@ export function createTurntable(canvas, { mobile = false, getBass = () => 0 } = 
   const base = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.22, 48), new THREE.MeshStandardMaterial({ color: 0x1b1712, metalness: 0.8, roughness: 0.3 }));
   base.position.y = -0.12; pivot.add(base);
   const ring = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.025, 12, 48), goldMat); ring.rotation.x = Math.PI / 2; ring.position.y = -0.01; pivot.add(ring);
-  const arm = new THREE.Group(); pivot.add(arm);
+  let arm = new THREE.Group(); pivot.add(arm);
   const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 2.45, 16), goldMat);
   tube.rotation.x = Math.PI / 2; tube.position.set(0, 0.08, 1.2); arm.add(tube);
   const head = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.06, 0.34), new THREE.MeshStandardMaterial({ color: 0x15110c, metalness: 0.6, roughness: 0.35 }));
   head.position.set(-0.06, 0.05, 2.45); head.rotation.y = 0.35; arm.add(head);
   const weight = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.26, 32), goldMat);
   weight.rotation.x = Math.PI / 2; weight.position.set(0, 0.08, -0.32); arm.add(weight);
-  const REST = 0.18, PLAY_START = -0.42, PLAY_END = -0.62; // y-rotation of the arm
+  let REST = 0.18, PLAY_START = -0.42, PLAY_END = -0.62; // y-rotation of the arm
+  let spinY = 0.17, lift = 0.45, armTilt = [-0.02, -0.06];
 
   // glow under the deck in the channel color
   const glow = new THREE.Mesh(new THREE.PlaneGeometry(10, 8), new THREE.MeshBasicMaterial({ map: glowTexture(), color: GOLD, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
   glow.rotation.x = -Math.PI / 2; glow.position.y = -0.56; scene.add(glow);
+
+  // ── the Blender-modelled deck (matte black + gold, Wave Seal label) replaces the stand-in once it loads ──
+  const placeholder = deck.children.slice();
+  const gl = new GLTFLoader(); gl.setMeshoptDecoder(MeshoptDecoder);
+  gl.load(deckUrl, (g) => {
+    if (disposed) return;
+    const model = g.scene, K = 5.4 / 0.46;                     // the Blender deck is 46 cm wide; the scene is built 5.4 wide
+    model.scale.setScalar(K); model.position.y = -0.08 * K;    // its top sits where the old plinth top was
+    const rec = model.getObjectByName("RecordRoot"), tone = model.getObjectByName("Tonearm"), wave = model.getObjectByName("LabelWave");
+    if (!rec || !tone) return;
+    model.traverse((o) => { if (o.material && o.material.name === "MatteBlack") { o.material.roughness = 0.5; o.material.envMapIntensity = 0.35; } });
+    // the song's cover goes on the record's label, inside the gold ring
+    label.geometry.dispose(); label.geometry = new THREE.CircleGeometry(0.0395, 64);
+    label.position.set(0, 0.00175, 0); rec.add(label);
+    if (wave) wave.visible = !labelMat.map;
+    placeholder.forEach((o) => { if (o !== spin) deck.remove(o); }); deck.remove(spin); deck.remove(sheen);
+    deck.add(model);
+    spin = rec; spinY = rec.position.y; lift = 0.45 / K;
+    arm = tone; REST = 0.21; PLAY_START = -0.19; PLAY_END = -0.52; armTilt = [0, 0];
+    armY = REST; arm.rotation.y = armY;
+    waveLabel = wave;
+    loop();
+  });
+  let waveLabel = null;
 
   // state
   let playing = false, speed = 0, armY = REST, progress = 0, raf = 0, visible = true, disposed = false;
@@ -144,13 +172,13 @@ export function createTurntable(canvas, { mobile = false, getBass = () => 0 } = 
     spin.rotation.y -= speed * dt;
     const target = playing ? PLAY_START + (PLAY_END - PLAY_START) * progress : REST;
     armY += (target - armY) * Math.min(1, dt * 2.2); arm.rotation.y = armY;
-    arm.rotation.x = playing ? -0.02 : -0.06;
+    arm.rotation.x = playing ? armTilt[0] : armTilt[1];
     // record swap: lift, change label, drop
     if (swapT >= 0) {
       swapT += dt; const k = Math.min(1, swapT / 0.9);
-      spin.position.y = 0.17 + Math.sin(k * Math.PI) * 0.45;
-      if (k > 0.5 && pendingTex) { labelMat.map?.dispose(); labelMat.map = pendingTex; labelMat.needsUpdate = true; pendingTex = null; }
-      if (k >= 1) { swapT = -1; spin.position.y = 0.17; }
+      spin.position.y = spinY + Math.sin(k * Math.PI) * lift;
+      if (k > 0.5 && pendingTex) { labelMat.map?.dispose(); labelMat.map = pendingTex; labelMat.needsUpdate = true; pendingTex = null; if (waveLabel) waveLabel.visible = false; }
+      if (k >= 1) { swapT = -1; spin.position.y = spinY; }
     }
     const bass = getBass();
     rim.color.copy(glowColor); glow.material.color.copy(glowColor);
@@ -171,7 +199,7 @@ export function createTurntable(canvas, { mobile = false, getBass = () => 0 } = 
     setCover(url) {
       if (!url) return;
       loader.load(url, (t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
-        if (!labelMat.map) { labelMat.map = t; labelMat.needsUpdate = true; } else { pendingTex = t; swapT = 0; } loop(); });
+        if (!labelMat.map) { labelMat.map = t; labelMat.needsUpdate = true; if (waveLabel) waveLabel.visible = false; } else { pendingTex = t; swapT = 0; } loop(); });
     },
     dispose() {
       disposed = true; cancelAnimationFrame(raf); ro.disconnect(); io.disconnect();
