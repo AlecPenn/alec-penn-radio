@@ -4,12 +4,35 @@ import { loadStation, onAir, audioUrl, gainMul, upcoming, offlineCoverage } from
 import { savedKeys, localUrlFor, keyOf, saveMany, pruneAuto, autoMinutes, setAutoMinutes, supported as offlineSupported } from "./saved.js";
 import { canAnalyse, attach as attachAnalyser, resume as resumeAnalyser, detach as detachAnalyser, getWave, getBands, getBass, live as analyserLive } from "./analyser.js";
 
-const C = {
-  black:"#0A0806",gold:"#C2A24D",deepGold:"#9E7F35",warmGold:"#D4B96A",
-  paleGold:"#EBD9A0",teal:"#2F6F6D",lazyTeal:"#3D7D7B",sageTeal:"#5E9E9C",
-  mistTeal:"#A8C9C8",ghostTeal:"#D6EBEA",burgundy:"#5B2A3C",
-  deepBurgundy:"#3D1827",roseMaroon:"#884055",dustyRose:"#C49AAA",cream:"#F4F1EC",
+// ── VIBES: the whole page re-colors from these. "classic" is the original look. ──
+const THEMES = {
+  classic:{ name:"Classic", c:{
+    black:"#0A0806",gold:"#C2A24D",deepGold:"#9E7F35",warmGold:"#D4B96A",
+    paleGold:"#EBD9A0",teal:"#2F6F6D",lazyTeal:"#3D7D7B",sageTeal:"#5E9E9C",
+    mistTeal:"#A8C9C8",ghostTeal:"#D6EBEA",burgundy:"#5B2A3C",
+    deepBurgundy:"#3D1827",roseMaroon:"#884055",dustyRose:"#C49AAA",cream:"#F4F1EC",
+    panel:"linear-gradient(180deg,#141008 0%,#0A0806 100%)",panelBar:"#1a1208" }, swatch:["#0A0806","#C2A24D","#5B2A3C"] },
+  skyline:{ name:"Skyline", c:{
+    black:"#120a2b",gold:"#FFB86B",deepGold:"#C08BFF",warmGold:"#FFD3A1",
+    paleGold:"#FFE9F6",teal:"#4F7BFF",lazyTeal:"#6B93FF",sageTeal:"#8ED1FF",
+    mistTeal:"#BFE3FF",ghostTeal:"#EAF4FF",burgundy:"#B4317A",
+    deepBurgundy:"#3B1760",roseMaroon:"#E0569F",dustyRose:"#FF9DD6",cream:"#FFF7FC",
+    panel:"linear-gradient(180deg,rgba(32,16,70,0.78) 0%,rgba(18,10,43,0.86) 100%)",panelBar:"#2a1658" }, swatch:["#3B1760","#FF9DD6","#FFB86B","#8ED1FF"] },
+  neon:{ name:"Neon", c:{
+    black:"#05010d",gold:"#FF2BD6",deepGold:"#9D4DFF",warmGold:"#FF7AE6",
+    paleGold:"#FFD6F8",teal:"#0091B8",lazyTeal:"#00B3E0",sageTeal:"#00F0FF",
+    mistTeal:"#7CF8FF",ghostTeal:"#DFFCFF",burgundy:"#5A0FB8",
+    deepBurgundy:"#1C0640",roseMaroon:"#FF2E88",dustyRose:"#FF8AD8",cream:"#F6F0FF",
+    panel:"linear-gradient(180deg,rgba(14,4,32,0.88) 0%,rgba(5,1,13,0.92) 100%)",panelBar:"#14052e" }, swatch:["#05010d","#FF2BD6","#00F0FF"] },
+  graffiti:{ name:"Graffiti", c:{
+    black:"#141414",gold:"#FFE600",deepGold:"#FF6A1F",warmGold:"#FFEE70",
+    paleGold:"#FFFFFF",teal:"#00A651",lazyTeal:"#00C060",sageTeal:"#3EC1FF",
+    mistTeal:"#9BE1FF",ghostTeal:"#E6F7FF",burgundy:"#D7263D",
+    deepBurgundy:"#2A2A2A",roseMaroon:"#FF3D8B",dustyRose:"#FF8CBF",cream:"#FAFAFA",
+    panel:"linear-gradient(180deg,rgba(28,28,28,0.9) 0%,rgba(18,18,18,0.94) 100%)",panelBar:"#242424" }, swatch:["#141414","#FFE600","#FF3D8B","#3EC1FF"] },
 };
+let C = THEMES.classic.c;
+const readTheme=()=>{ try{ const t=localStorage.getItem("aprTheme"); return THEMES[t]?t:"classic"; }catch(e){ return "classic"; } };
 
 const YT = "https://www.youtube.com/@AlecPennRadio";
 
@@ -325,6 +348,68 @@ function OfflineSaver({ channel, name, mobile, glow }){
   );
 }
 
+
+/* ── VIBE BACKDROPS (only for the non-classic themes) ── */
+function ThemeBackdrop({ theme }){
+  if(theme==="classic") return null;
+  const layer={ position:"fixed",inset:0,zIndex:-1,pointerEvents:"none",overflow:"hidden" };
+  if(theme==="skyline") return (
+    <div aria-hidden="true" style={{ ...layer,background:"linear-gradient(180deg,#140b33 0%,#2b1563 30%,#7b2d8f 55%,#e0569f 74%,#ffb86b 90%,#ffd9a0 100%)" }}>
+      {[["8%","6%",520,"#ff9dd6"],["55%","2%",620,"#c08bff"],["30%","20%",480,"#8ed1ff"],["70%","26%",560,"#ffb86b"],["-5%","34%",500,"#ffe9f6"]].map(([l,t,w,c],i)=>(
+        <div key={i} style={{ position:"absolute",left:l,top:t,width:w,height:w*0.42,borderRadius:"50%",background:`radial-gradient(closest-side,${c}cc,${c}55 60%,transparent)`,filter:"blur(28px)",animation:`cloud-drift ${38+i*9}s ease-in-out ${-i*7}s infinite alternate`,opacity:0.75 }}/>
+      ))}
+      {Array.from({length:40}).map((_,i)=>(<div key={"s"+i} style={{ position:"absolute",left:`${(i*37)%100}%`,top:`${(i*53)%38}%`,width:2,height:2,borderRadius:2,background:"#fff",opacity:0.5+((i*7)%5)/10,animation:`pulse-dot ${3+(i%5)}s ease-in-out ${i%4}s infinite` }}/>))}
+      <svg viewBox="0 0 1200 220" preserveAspectRatio="xMidYMax slice" style={{ position:"absolute",left:0,right:0,bottom:0,width:"100%",height:"34vh" }}>
+        <path d="M0 220 V150 H40 V110 H70 V150 H95 V80 H130 V150 H160 V120 H190 V60 H215 V40 H240 V60 H265 V150 H300 V100 H340 V150 H370 V70 H400 V30 H425 V70 H450 V150 H490 V115 H520 V150 H560 V90 H600 V150 H630 V55 H660 V20 H680 V55 H705 V150 H740 V105 H780 V150 H810 V75 H850 V150 H880 V120 H910 V150 H945 V65 H980 V35 H1000 V65 H1030 V150 H1070 V100 H1110 V150 H1140 V125 H1200 V220 Z" fill="#120a2b" opacity="0.92"/>
+        {Array.from({length:70}).map((_,i)=>{ const x=50+((i*61)%1110), y=60+((i*29)%85); return <rect key={i} x={x} y={y} width="5" height="7" fill={i%3?"#FFD3A1":"#FF9DD6"} opacity={0.35+((i*13)%6)/10}/>; })}
+      </svg>
+    </div>
+  );
+  if(theme==="neon") return (
+    <div aria-hidden="true" style={{ ...layer,background:"radial-gradient(ellipse 80% 50% at 50% 0%,#3a0a6e 0%,#0b0220 55%,#05010d 100%)" }}>
+      <div style={{ position:"absolute",left:"-50%",right:"-50%",bottom:"-10%",height:"55vh",transform:"perspective(500px) rotateX(62deg)",transformOrigin:"bottom",
+        backgroundImage:"linear-gradient(#ff2bd6aa 2px,transparent 2px),linear-gradient(90deg,#00f0ffaa 2px,transparent 2px)",backgroundSize:"70px 70px",animation:"grid-move 3s linear infinite",maskImage:"linear-gradient(transparent,#000 40%)",WebkitMaskImage:"linear-gradient(transparent,#000 40%)" }}/>
+      <div style={{ position:"absolute",left:0,right:0,bottom:"45vh",height:3,background:"#ff2bd6",boxShadow:"0 0 18px #ff2bd6,0 0 50px #ff2bd6" }}/>
+      <div style={{ position:"absolute",inset:0,backgroundImage:"repeating-linear-gradient(0deg,rgba(255,255,255,0.03) 0 1px,transparent 1px 3px)" }}/>
+    </div>
+  );
+  if(theme==="graffiti") return (
+    <div aria-hidden="true" style={{ ...layer,background:"#1c1c1c",backgroundImage:"linear-gradient(#0e0e0e 3px,transparent 3px),linear-gradient(90deg,#0e0e0e 3px,transparent 3px),linear-gradient(90deg,#0e0e0e 3px,transparent 3px)",backgroundSize:"120px 48px,120px 48px,120px 96px",backgroundPosition:"0 0,0 0,60px 48px" }}>
+      {[["6%","8%",360,"#FFE600"],["70%","4%",420,"#FF3D8B"],["40%","38%",380,"#3EC1FF"],["-6%","58%",420,"#00C060"],["74%","62%",360,"#FF6A1F"]].map(([l,t,w,c],i)=>(
+        <div key={i} style={{ position:"absolute",left:l,top:t,width:w,height:w,borderRadius:"50%",background:`radial-gradient(closest-side,${c}55,${c}22 55%,transparent 72%)`,filter:"blur(6px)" }}/>
+      ))}
+      {[["12%","#FFE600"],["33%","#FF3D8B"],["58%","#3EC1FF"],["81%","#00C060"]].map(([l,c],i)=>(
+        <div key={"d"+i} style={{ position:"absolute",left:l,top:0,width:6,height:`${90+i*40}px`,borderRadius:"0 0 6px 6px",background:c,opacity:0.55,boxShadow:`14px 0 0 -1px ${c}aa, 26px 0 0 -2px ${c}66` }}/>
+      ))}
+    </div>
+  );
+  return null;
+}
+
+function VibePicker({ theme, setTheme, mobile }){
+  const [open,setOpen]=useState(false);
+  const mono="'JetBrains Mono',monospace";
+  const chips=(
+    <div role="radiogroup" aria-label="Page style" style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
+      {Object.entries(THEMES).map(([k,t])=>(
+        <button key={k} role="radio" aria-checked={theme===k} onClick={()=>{ setTheme(k); setOpen(false); }}
+          style={{ display:"flex",alignItems:"center",gap:8,minHeight:mobile?44:34,padding:"0 12px",borderRadius:999,cursor:"pointer",fontFamily:mono,fontSize:mobile?12:11,letterSpacing:"0.08em",
+            background:theme===k?C.gold:"transparent",color:theme===k?C.black:C.warmGold,border:`1px solid ${theme===k?C.gold:C.deepGold+"66"}` }}>
+          <span style={{ display:"flex" }}>{t.swatch.map((c,i)=><span key={i} style={{ width:10,height:10,borderRadius:"50%",background:c,border:"1px solid #ffffff55",marginLeft:i?-3:0 }}/>)}</span>
+          {t.name.toUpperCase()}
+        </button>
+      ))}
+    </div>
+  );
+  if(mobile) return chips;
+  return (
+    <div style={{ position:"relative" }}>
+      <button onClick={()=>setOpen(o=>!o)} aria-expanded={open} className="nav-link" style={{ background:"transparent",border:`1px solid ${C.deepGold}55`,borderRadius:4,padding:"4px 10px",cursor:"pointer" }}>◐ Vibe</button>
+      {open&&<div style={{ position:"absolute",right:0,top:"calc(100% + 10px)",zIndex:60,background:`${C.black}f5`,border:`1px solid ${C.deepGold}55`,borderRadius:10,padding:12,width:420,backdropFilter:"blur(10px)" }}>{chips}</div>}
+    </div>
+  );
+}
+
 /* ── PARTICLES ── */
 function ParticleField({ active, glowColor }) {
   const canvasRef=useRef(null);
@@ -606,6 +691,9 @@ function FrequencyDial({ genre, onChange }) {
    MAIN
 ══════════════════════════════════════ */
 export default function AlecPennRadio() {
+  const [theme,setThemeState]=useState(readTheme);
+  C=THEMES[theme].c;   // every part of the page reads its colors from C
+  const setTheme=useCallback((t)=>{ setThemeState(t); try{ localStorage.setItem("aprTheme",t); }catch(e){} },[]);
   const mobile=useIsMobile();
   const [tuned,setTuned]=useState(false);
   const [tuning,setTuning]=useState(false);
@@ -722,7 +810,8 @@ export default function AlecPennRadio() {
   const currentGenreObj=GENRES.find(g=>g.name===genre)||GENRES[0];
 
   return (
-    <div style={{ minHeight:"100vh",background:C.black,color:C.cream,fontFamily:"'Georgia','Times New Roman',serif",cursor:mobile?"auto":"none",overflowX:"hidden" }}>
+    <div className={`apr theme-${theme}`} style={{ minHeight:"100vh",background:C.black,color:C.cream,fontFamily:"'Georgia','Times New Roman',serif",cursor:mobile?"auto":"none",overflowX:"hidden",position:"relative",isolation:"isolate",transition:"background 0.6s" }}>
+      <ThemeBackdrop theme={theme}/>
       <style>{`
         *{box-sizing:border-box;margin:0;padding:0;}
         html,body{width:100%;overflow-x:hidden;background:#0A0806;}
@@ -733,6 +822,15 @@ export default function AlecPennRadio() {
         @keyframes scanline{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
         @keyframes static-flash{0%{opacity:1}100%{opacity:0}}
         @keyframes on-air-blink{0%,49%{opacity:1}50%,99%{opacity:0}}
+        @keyframes cloud-drift{from{transform:translateX(-6%)}to{transform:translateX(8%)}}
+        @keyframes grid-move{from{background-position:0 0}to{background-position:0 70px}}
+        html,body{background:${C.black}!important;}
+        .theme-skyline h1,.theme-skyline h2[style*="Bebas"]{background:linear-gradient(90deg,#FFB86B,#FF9DD6 45%,#C08BFF 75%,#8ED1FF);-webkit-background-clip:text;background-clip:text;color:transparent!important;}
+        .theme-neon h1,.theme-neon h2,.theme-neon [style*="Bebas Neue"]:not(button){text-shadow:0 0 6px currentColor,0 0 20px currentColor;}
+        .theme-neon button{box-shadow:0 0 12px rgba(255,43,214,0.28);}
+        .theme-graffiti h1,.theme-graffiti h2{font-family:'Permanent Marker',cursive!important;letter-spacing:0.02em!important;text-shadow:4px 4px 0 #000,-1px -1px 0 #000;transform:rotate(-2deg);}
+        .theme-graffiti h1{color:#FFE600!important;}
+        @media (prefers-reduced-motion: reduce){.apr *{animation:none!important;}}
         @keyframes glow-pulse{0%,100%{box-shadow:0 0 20px #2F6F6D44}50%{box-shadow:0 0 44px #2F6F6D88}}
         @keyframes horizon-scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
         @keyframes ticker-scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
@@ -781,6 +879,7 @@ export default function AlecPennRadio() {
             </div>
             <div style={{ display:"flex",gap:16,alignItems:"center" }}>
               
+              <VibePicker theme={theme} setTheme={setTheme} mobile={false}/>
               <a href="/saved" className="nav-link" style={{ color:C.gold }}>♥ Saved</a>
               <a href="#broadcast" className="nav-link">Broadcast</a>
               <a href="#charts" className="nav-link">Charts</a>
@@ -817,6 +916,8 @@ export default function AlecPennRadio() {
 
       {mobile&&menuOpen&&(
         <div style={{ background:`${C.black}f8`,backdropFilter:"blur(14px)",borderBottom:`1px solid ${C.deepGold}22`,padding:"16px",display:"flex",flexDirection:"column",gap:12,position:"relative",zIndex:49 }}>
+          <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.sageTeal,letterSpacing:"0.16em" }}>VIBE</div>
+          <VibePicker theme={theme} setTheme={setTheme} mobile={true}/>
           {["#broadcast","#charts","#mission"].map((href,i)=>(
             <a key={href} href={href} onClick={()=>setMenuOpen(false)} style={{ color:C.warmGold,textDecoration:"none",fontFamily:"'JetBrains Mono',monospace",fontSize:12,letterSpacing:"0.12em",textTransform:"uppercase",padding:"8px 0",borderBottom:`1px solid ${C.deepGold}18` }}>
               {["Broadcast","Charts","Mission"][i]}
@@ -831,14 +932,14 @@ export default function AlecPennRadio() {
       <section id="broadcast" style={{ padding:mobile?`24px ${pad} 0`:`48px ${pad} 0`,maxWidth:1140,margin:"0 auto",position:"relative" }}>
         <div style={{
           border:`1px solid ${tuned?activeGlow+"66":C.deepGold+"44"}`,borderRadius:mobile?10:14,
-          overflow:"hidden",position:"relative",background:"linear-gradient(180deg,#141008 0%,#0A0806 100%)",
+          overflow:"hidden",position:"relative",background:C.panel,
           boxShadow:tuned?`0 0 80px ${activeGlow}22,inset 0 1px 0 ${activeGlow}33`:`0 0 40px ${C.deepGold}10,inset 0 1px 0 ${C.gold}14`,
           transform:mobile?"none":`translateY(${scrollY*0.018}px)`,transition:"border-color 0.9s,box-shadow 0.9s" }}>
 
           <div style={{ position:"absolute",inset:0,zIndex:0 }}><ParticleField active={tuned} glowColor={activeGlow}/></div>
 
           {/* Title bar */}
-          <div style={{ position:"relative",zIndex:2,background:`linear-gradient(90deg,${C.deepBurgundy}cc,#1a1208cc,${C.deepBurgundy}cc)`,borderBottom:`1px solid ${tuned?activeGlow+"33":C.deepGold+"2a"}`,padding:mobile?"7px 14px":"9px 18px",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+          <div style={{ position:"relative",zIndex:2,background:`linear-gradient(90deg,${C.deepBurgundy}cc,${C.panelBar}cc,${C.deepBurgundy}cc)`,borderBottom:`1px solid ${tuned?activeGlow+"33":C.deepGold+"2a"}`,padding:mobile?"7px 14px":"9px 18px",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
             <div style={{ display:"flex",alignItems:"center",gap:8 }}>
               <div style={{ width:6,height:6,borderRadius:"50%",background:tuned?C.sageTeal:C.dustyRose,animation:tuned?"on-air-blink 1.4s step-end infinite":"none" }}/>
               <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:9,color:tuned?C.sageTeal:C.dustyRose,letterSpacing:"0.12em" }}>{tuning?"TUNING...":tuned?"ON AIR":"STANDBY"}</span>

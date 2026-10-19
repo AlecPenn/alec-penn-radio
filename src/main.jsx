@@ -10,6 +10,7 @@ import '@fontsource/dm-serif-display/400-italic.css'
 import '@fontsource/jetbrains-mono/400.css'
 import '@fontsource/jetbrains-mono/500.css'
 import '@fontsource/jetbrains-mono/700.css'
+import '@fontsource/permanent-marker/400.css'
 
 // Free visitor counts (Vercel Web Analytics): no cookies, no personal data.
 // Only when there's a signal, so offline phones never reach for the internet.
