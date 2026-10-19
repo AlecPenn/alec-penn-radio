@@ -173,8 +173,7 @@ export default function Saved() {
 
   return (
     <div style={{ minHeight: "100vh", background: C.black, color: C.cream, fontFamily: mono, paddingBottom: current ? 150 : 40 }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&display=swap');
-        body{margin:0;background:${C.black}} button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid ${C.pale};outline-offset:2px}`}</style>
+      <style>{`body{margin:0;background:${C.black}} button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid ${C.pale};outline-offset:2px}`}</style>
       {header}
       <main style={{ maxWidth: 760, margin: "0 auto", padding: "16px" }}>
         {!standalone && (

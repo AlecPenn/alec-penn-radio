@@ -1,7 +1,7 @@
 // Alec Penn Radio — offline support.
 // 1. Keeps a copy of the app itself so it opens with no signal.
 // 2. Serves songs the listener saved (stored under /saved-audio/...) straight from the phone.
-const APP = "apr-app-v2";        // the app's own files
+const APP = "apr-app-v3";        // the app's own files
 const SAVED = "apr-saved-v1";    // songs + covers the listener chose to keep (never auto-deleted)
 const ART = "apr-art-v1";        // covers and fonts seen while browsing
 
@@ -12,7 +12,17 @@ self.addEventListener("install", (e) => {
     const html = await res.clone().text();
     await cache.put("/", res);
     // cache every script/style the page loads so the app can start offline
-    const assets = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((m) => m[1]);
+    const assets = new Set([...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((m) => m[1]));
+    // Also grab what those files load later (the 3D turntable, the bundled fonts), so nothing is missing offline.
+    for (const a of [...assets]) {
+      if (!/\.(js|css)$/.test(a)) continue;
+      try {
+        const text = await (await fetch(a)).text();
+        for (const m of text.matchAll(/assets\/[\w.-]+\.(?:js|css|woff2)/g)) {
+          if (!/cyrillic|greek|vietnamese/.test(m[0])) assets.add("/" + m[0]);   // latin fonts are all the app uses
+        }
+      } catch (err) {}
+    }
     await cache.addAll([...new Set(["/station.json", "/favicon.svg", "/manifest.webmanifest", "/icons/icon-192.png", ...assets])]);
     self.skipWaiting();
   })());
@@ -46,8 +56,13 @@ async function savedSong(req) {
   });
 }
 
+const offline = () => self.navigator && self.navigator.onLine === false;
+// A quiet "not here" answer, so the phone never tries the internet while offline.
+const nothing = () => new Response("", { status: 504, statusText: "Offline" });
+
 async function networkFirst(req, cacheName, key) {
   const cache = await caches.open(cacheName);
+  if (offline()) return (await cache.match(key || req)) || nothing();   // no signal: go straight to the phone's copy
   try {
     const res = await fetch(req);
     if (res.ok) cache.put(key || req, res.clone());
@@ -62,6 +77,7 @@ async function networkFirst(req, cacheName, key) {
 async function cacheFirst(req, cacheName) {
   const hit = (await caches.match(req));
   if (hit) return hit;
+  if (offline()) return nothing();
   const res = await fetch(req);
   if (res.ok || res.type === "opaque") (await caches.open(cacheName)).put(req, res.clone());
   return res;
@@ -80,8 +96,11 @@ self.addEventListener("fetch", (e) => {
     if (url.pathname === "/station.json") return e.respondWith(networkFirst(req, APP));
     if (url.pathname.startsWith("/assets/") || url.pathname.startsWith("/icons/")) return e.respondWith(cacheFirst(req, APP));
     if (url.pathname.startsWith("/covers/")) return e.respondWith(cacheFirst(req, ART));
+    if (offline()) return e.respondWith(nothing());
     return;
   }
   if (url.hostname === "fonts.googleapis.com" || url.hostname === "fonts.gstatic.com") return e.respondWith(cacheFirst(req, ART));
-  // everything else (the live radio from archive.org, YouTube, analytics) goes straight to the internet
+  // No signal: don't let anything else (archive.org, YouTube images, analytics) try the internet.
+  if (offline()) return e.respondWith(nothing());
+  // Otherwise everything else goes straight to the internet
 });

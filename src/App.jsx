@@ -148,6 +148,7 @@ function ArchiveRadio({ playing, channel, volume, onTrack, onProgress }) {
     if(token!==tokenRef.current) return;
     if(urlRef.current){ URL.revokeObjectURL(urlRef.current); urlRef.current=null; }
     if(local) urlRef.current=local;
+    if(!local&&!navigator.onLine){ a.pause(); onTrack?.({...info,unavailable:true}); return; }
     a.src=local||audioUrl(info.track);
     a.dataset.offset=String(info.offset);
     applyVolume();
@@ -659,7 +660,9 @@ export default function AlecPennRadio() {
       try{const[top,latest,sh]=await Promise.all([getTopVideos(),getLatestVideos(),getTopShorts()]);setTopVideos(top);setLatestVideo(latest[0]||null);setShorts(sh);}catch(e){console.error(e);}
       setLoadingYT(false);
     }
-    fetchData();
+    // No signal: don't reach for YouTube (iPhones nag about Wi-Fi); try again when the signal comes back.
+    if(navigator.onLine) fetchData();
+    else { setLoadingYT(false); const on=()=>fetchData(); window.addEventListener("online",on,{once:true}); return()=>window.removeEventListener("online",on); }
   },[]);
 
   // Easter egg keyboard listener
@@ -721,7 +724,6 @@ export default function AlecPennRadio() {
   return (
     <div style={{ minHeight:"100vh",background:C.black,color:C.cream,fontFamily:"'Georgia','Times New Roman',serif",cursor:mobile?"auto":"none",overflowX:"hidden" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
         html,body{width:100%;overflow-x:hidden;background:#0A0806;}
         ::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-track{background:#0A0806;}::-webkit-scrollbar-thumb{background:#9E7F35;border-radius:2px;}

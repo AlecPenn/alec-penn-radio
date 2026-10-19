@@ -26,6 +26,7 @@ export async function saveSong(t, onProgress = () => {}, kind = "song", signal) 
     onProgress(1);
     return existing;
   }
+  if (!navigator.onLine) throw new Error("offline");   // never reach for the internet with no signal
   const res = await fetch(audioUrl(t), { signal });
   if (!res.ok) throw new Error("download failed (" + res.status + ")");
   const total = Number(res.headers.get("content-length")) || 0;
