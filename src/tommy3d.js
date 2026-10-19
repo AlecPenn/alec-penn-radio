@@ -1,8 +1,9 @@
-// TOMMY — the 3D black cat in a wizard hat (modeled in Blender). When someone types TOMMY he rises up
+// TOMMY — the 3D black cat in a wizard hat, gold APR pendant (modeled in Blender). When someone types TOMMY he rises up
 // in the bottom corner, looks at you, flicks his tail, tips his hat and sinks back down.
 // Loaded only when the egg fires.
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import tommyUrl from "./assets/tommy.glb?url";
 
@@ -34,34 +35,46 @@ export function tommyAppears(canvas, { onDone = () => {} } = {}) {
   }
   size(); window.addEventListener("resize", size);
 
-  new GLTFLoader().load(tommyUrl, (g) => {
+  const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
+  loader.load(tommyUrl, (g) => {
     if (stopped) return;
-    const cat = g.scene; const rig = new THREE.Group(); rig.add(cat); scene.add(rig);
-    cat.position.x = -0.05;
-    const parts = {};
-    for (const n of ["Head", "Hat", "Tail"]) { const o = cat.getObjectByName(n); if (o) { parts[n] = o; o.userData.rest = o.rotation.clone(); } }
-    const set = (n, axis, v) => { const o = parts[n]; if (o) o.rotation[axis] = o.userData.rest[axis] + v; };
+    const cat = g.scene;
+    // size him to ~1.45 units tall, standing on the floor, centred
+    const box = new THREE.Box3().setFromObject(cat), sz = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+    const k = 1.45 / sz.y; cat.scale.setScalar(k); cat.position.set(-c.x * k, -box.min.y * k, -c.z * k);
+    // keep his fur black on screens (the velvet sheen is tuned for studio renders)
+    cat.traverse((o) => { const m = o.material; if (m && "sheen" in m && m.sheen > 0) { m.sheen = 0.35; m.sheenRoughness = 0.5; } });
+    const rig = new THREE.Group(); rig.add(cat); scene.add(rig);
+    const hat = cat.getObjectByName("THat");
+    const lids = ["TLidL", "TLidR"].map((n) => cat.getObjectByName(n)).filter(Boolean);
+    const rest = new Map([hat, ...lids].filter(Boolean).map((o) => [o, o.quaternion.clone()]));
+    const q = new THREE.Quaternion(), X = new THREE.Vector3(1, 0, 0), Z = new THREE.Vector3(0, 0, 1);
+    const turn = (o, axis, a) => { if (o) o.quaternion.copy(rest.get(o)).multiply(q.setFromAxisAngle(axis, a)); };
     // our own clock: advances at most 1/30 s per frame, so a slow first frame (shaders warming up) never skips the show
-    const D = 6.2; let t = 0, last = 0, frames = 0;
+    const D = 6.2; let t = 0, last = 0;
     renderer.compile(scene, camera);
     const tick = (now) => {
       if (stopped) return;
       raf = requestAnimationFrame(tick);
-      frames++; if (last) t += Math.min((now - last) / 1000, 1 / 30); last = now;
+      if (last) t += Math.min((now - last) / 1000, 1 / 30); last = now;
       const up = t < 0.7 ? back(t / 0.7) : t > D - 0.6 ? 1 - ease((t - (D - 0.6)) / 0.6) : 1;
-      rig.position.y = -1.7 * (1 - up);
-      rig.rotation.y = -0.55 + Math.sin(t * 0.6) * 0.12;          // three-quarter view, turning slightly
-      glow.material.opacity = 0.22 * Math.max(0, up);
-      set("Head", "y", t > 1 && t < 3.2 ? Math.sin((t - 1) / 2.2 * Math.PI) * 0.5 : 0);   // looks at you
-      set("Head", "z", Math.sin(t * 1.7) * 0.05);
-      set("Tail", "y", Math.sin(t * 2.6) * 0.18);                       // tail flick
-      const tip = t > 3.4 && t < 4.6 ? Math.sin((t - 3.4) / 1.2 * Math.PI) : 0;
-      set("Hat", "z", tip * 0.5); set("Hat", "x", tip * -0.15);         // tips his hat
+      rig.position.y = -1.8 * (1 - up);
+      // turns to look at you, then back to three-quarters
+      const look = t > 0.9 && t < 3.3 ? Math.sin((t - 0.9) / 2.4 * Math.PI) : 0;
+      rig.rotation.y = -0.45 + look * 0.4 + Math.sin(t * 0.6) * 0.05;
+      rig.rotation.z = Math.sin(t * 1.4) * 0.025;
+      glow.material.opacity = 0.1 * Math.max(0, up);
+      // a slow cat blink (that's a cat saying "I like you")
+      const blink = t > 2.0 && t < 2.9 ? Math.sin((t - 2.0) / 0.9 * Math.PI) : 0;
+      lids.forEach((l) => turn(l, X, blink * 0.75));
+      // tips his hat
+      const tip = t > 3.5 && t < 4.7 ? Math.sin((t - 3.5) / 1.2 * Math.PI) : 0;
+      if (hat) { turn(hat, Z, tip * 0.35); hat.position.y = hat.userData.y0 ?? (hat.userData.y0 = hat.position.y); hat.position.y = hat.userData.y0 + tip * 0.05; }
       renderer.render(scene, camera);
-      if (t >= D) { console.log("tommy done", t, frames); stop(); onDone(); }
+      if (t >= D) { stop(); onDone(); }
     };
     raf = requestAnimationFrame(tick);
-  }, undefined, (err) => { console.warn("tommy load failed", err); stop(); onDone(new Error("load")); });
+  }, undefined, () => { stop(); onDone(new Error("load")); });
 
   function stop() {
     if (stopped) return;
