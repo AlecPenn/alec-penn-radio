@@ -64,6 +64,7 @@ const STYLE = {
   "Synthwave":         { glow:"#C49AAA", mood:"neon" },
   "Workout":           { glow:"#D4B96A", mood:"full send" },
   "The Revival Series":{ glow:"#EBD9A0", mood:"uplifted" },
+  "YouTube Shorts":{ glow:"#FF5A6E", mood:"quick hits" },
 };
 const styleOf = (name) => STYLE[name] || { glow:"#C2A24D", mood:"on air" };
 let GENRES = [{ name:"Full Station", slug:"all", ...styleOf("Full Station") }];

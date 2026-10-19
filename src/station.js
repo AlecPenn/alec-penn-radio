@@ -12,7 +12,8 @@ export async function loadStation() {
   if (_data) return _data;
   const res = await fetch("/station.json");
   const raw = await res.json();
-  const channels = raw.channels.map((c) => ({
+  // a station marked "hidden" is waiting for its songs to finish uploading to archive.org
+  const channels = raw.channels.filter((c) => !c.hidden).map((c) => ({
     ...c,
     tracks: c.tracks.map((t, i) => ({ ...t, ia: c.ia, genre: c.name, cover: `/covers/${c.slug}/${t.c ?? i}.webp`, key: `${c.slug}/${i}` })),
   }));

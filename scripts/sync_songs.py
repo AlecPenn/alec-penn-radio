@@ -135,6 +135,14 @@ def main():
             continue
         stats["checked"] += 1
         on_ia = set(originals)
+        if ch.get("hidden"):   # a new station waiting for its upload: switch it on once (nearly) all its songs are there
+            have_n = sum(1 for t in ch["tracks"] if t["f"] in on_ia)
+            if ch["tracks"] and have_n >= len(ch["tracks"]) - MAX_REMOVE:
+                del ch["hidden"]; changed = True
+                print(f"{ch['name']}: uploaded ({have_n}/{len(ch['tracks'])} songs) - now on air")
+            else:
+                print(f"{ch['name']}: still uploading ({have_n}/{len(ch['tracks'])}), staying hidden")
+                continue
         is_blocked = lambda name: f"{ch['ia']}/{name}" in block
         stats["blocked_on_ia"] += sum(1 for n in originals if is_blocked(n))
 
