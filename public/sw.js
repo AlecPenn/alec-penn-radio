@@ -1,7 +1,7 @@
 // Alec Penn Radio — offline support.
 // 1. Keeps a copy of the app itself so it opens with no signal.
 // 2. Serves songs the listener saved (stored under /saved-audio/...) straight from the phone.
-const APP = "apr-app-v3";        // the app's own files
+const APP = "apr-app-v4";        // the app's own files
 const SAVED = "apr-saved-v1";    // songs + covers the listener chose to keep (never auto-deleted)
 const ART = "apr-art-v1";        // covers and fonts seen while browsing
 
@@ -14,11 +14,11 @@ self.addEventListener("install", (e) => {
     // cache every script/style the page loads so the app can start offline
     const assets = new Set([...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((m) => m[1]));
     // Also grab what those files load later (the 3D turntable, the bundled fonts), so nothing is missing offline.
-    for (const a of [...assets]) {
+    for (const a of assets) {   // the set grows as we go, so files loaded by files get picked up too
       if (!/\.(js|css)$/.test(a)) continue;
       try {
         const text = await (await fetch(a)).text();
-        for (const m of text.matchAll(/assets\/[\w.-]+\.(?:js|css|woff2)/g)) {
+        for (const m of text.matchAll(/assets\/[\w.-]+\.(?:js|css|woff2|glb)/g)) {
           if (!/cyrillic|greek|vietnamese/.test(m[0])) assets.add("/" + m[0]);   // latin fonts are all the app uses
         }
       } catch (err) {}

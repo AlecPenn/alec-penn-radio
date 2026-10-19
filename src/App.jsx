@@ -628,12 +628,25 @@ function BroadcastTicker({ active, nowPlaying }) {
 }
 
 /* ── EASTER EGG DISPLAY ── */
+// Tommy in 3D (black cat, wizard hat) pops up in the bottom corner. Falls back to the emoji if 3D can't run.
+function TommyCat({ onDone }){
+  const ref=useRef(null); const [flat,setFlat]=useState(false);
+  useEffect(()=>{
+    if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches){ setFlat(true); return; }
+    let stop=null, gone=false;
+    import("./tommy3d.js").then(m=>{ if(gone) return; try{ stop=m.tommyAppears(ref.current,{ onDone:(e)=>{ if(e) setFlat(true); else onDone?.(); } }); }catch(e){ setFlat(true); } }).catch(()=>setFlat(true));
+    return()=>{ gone=true; stop?.(); };
+  },[]);
+  useEffect(()=>{ if(!flat) return; const t=setTimeout(()=>onDone?.(),6500); return()=>clearTimeout(t); },[flat]);
+  if(flat) return <div aria-hidden="true" style={{ position:"fixed",bottom:18,left:0,zIndex:499,fontSize:54,pointerEvents:"none",animation:"cat-walk 6s linear forwards" }}>🐈‍⬛</div>;
+  return <canvas ref={ref} aria-hidden="true" style={{ position:"fixed",right:0,bottom:0,width:"min(100vw,520px)",height:"min(62vh,440px)",zIndex:499,pointerEvents:"none" }}/>;
+}
 function EasterEggMsg({ egg, onClose }) {
   const { msg, playlist, fx }=egg;
-  useEffect(()=>{const t=setTimeout(onClose,playlist?9000:6000);return()=>clearTimeout(t);},[]);
+  useEffect(()=>{const t=setTimeout(onClose,playlist?9000:fx==="cat"?20000:6000);return()=>clearTimeout(t);},[]);
   return (
     <>
-    {fx==="cat"&&<div aria-hidden="true" style={{ position:"fixed",bottom:18,left:0,zIndex:499,fontSize:54,pointerEvents:"none",animation:"cat-walk 6s linear forwards" }}>🐈‍⬛</div>}
+    {fx==="cat"&&<TommyCat onDone={onClose}/>}
     {(fx==="sparkle"||fx==="burst")&&<div aria-hidden="true" style={{ position:"fixed",inset:0,zIndex:499,pointerEvents:"none",overflow:"hidden" }}>
       {Array.from({length:28}).map((_,i)=>{ const a=i/28*Math.PI*2, d=180+(i%5)*50;
         return <span key={i} style={{ position:"absolute",left:"50%",top:"50%",fontSize:14+(i%4)*6,color:i%3?C.gold:C.cream,"--dx":`${Math.cos(a)*d}px`,"--dy":`${Math.sin(a)*d}px`,animation:`egg-burst ${1.4+(i%3)*0.4}s ease-out forwards` }}>{fx==="sparkle"?"✦":"★"}</span>; })}
