@@ -528,8 +528,8 @@ function Turntable({ playing, cover, glow, progress, mobile, height }) {
     if(failed) return; let alive=true;
     import("./turntable.js").then(m=>{
       if(!alive||!canvasRef.current) return;
-      try{ ttRef.current=m.createTurntable(canvasRef.current,{ mobile, getBass, onScratch:(v)=>window._aprScratch?.(v) });
-        ttRef.current.setGlow(glow); ttRef.current.setPlaying(playing); if(cover) ttRef.current.setCover(cover);
+      try{ ttRef.current=m.createTurntable(canvasRef.current,{ mobile, getBass, getBands, onScratch:(v)=>window._aprScratch?.(v) });
+        ttRef.current.setGlow(glow); ttRef.current.setPlaying(playing); ttRef.current.setVisualizer(vizRef.current); if(cover) ttRef.current.setCover(cover);
       }catch(e){ console.error(e); setFailed(true); }
     }).catch(()=>setFailed(true));
     return()=>{ alive=false; ttRef.current?.dispose(); ttRef.current=null; };
@@ -537,9 +537,20 @@ function Turntable({ playing, cover, glow, progress, mobile, height }) {
   useEffect(()=>{ ttRef.current?.setPlaying(playing); },[playing]);
   useEffect(()=>{ if(cover) ttRef.current?.setCover(cover); },[cover]);
   useEffect(()=>{ ttRef.current?.setGlow(glow); },[glow]);
+  const [viz,setViz]=useState(()=>{ try{ return localStorage.getItem("aprViz")!=="0"; }catch(e){ return true; } });
+  const vizRef=useRef(viz); vizRef.current=viz;
+  useEffect(()=>{ ttRef.current?.setVisualizer(viz); try{ localStorage.setItem("aprViz",viz?"1":"0"); }catch(e){} },[viz]);
   useEffect(()=>{ ttRef.current?.setProgress(progress); },[progress]);
   if(failed) return null;
-  return <canvas ref={canvasRef} aria-label="Record player showing the song that's playing. Drag the record to spin it." style={{ display:"block",width:"100%",height,touchAction:"pan-y" }}/>;
+  return (
+    <div style={{ position:"relative",width:"100%" }}>
+      <canvas ref={canvasRef} aria-label="Record player showing the song that's playing. Drag the record to spin it." style={{ display:"block",width:"100%",height,touchAction:"pan-y" }}/>
+      <button onClick={()=>setViz(v=>!v)} aria-pressed={viz} title="Turn the visualizer ring on or off"
+        style={{ position:"absolute",top:mobile?8:6,right:mobile?16:8,background:viz?glow+"22":"transparent",border:`1px solid ${viz?glow:C.deepGold+"55"}`,color:viz?glow:C.deepGold,borderRadius:20,padding:mobile?"7px 12px":"4px 10px",fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?10:9,letterSpacing:"0.14em",cursor:"pointer" }}>
+        {viz?"◉ VISUALIZER":"○ VISUALIZER"}
+      </button>
+    </div>
+  );
 }
 
 /* ── OSCILLOSCOPE (real waveform when available) ── */

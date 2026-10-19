@@ -43,7 +43,7 @@ function glowTexture() {
   return new THREE.CanvasTexture(c);
 }
 
-export function createTurntable(canvas, { mobile = false, getBass = () => 0, onScratch = null } = {}) {
+export function createTurntable(canvas, { mobile = false, getBass = () => 0, getBands = () => null, onScratch = null } = {}) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -119,6 +119,46 @@ export function createTurntable(canvas, { mobile = false, getBass = () => 0, onS
   const glow = new THREE.Mesh(new THREE.PlaneGeometry(10, 8), new THREE.MeshBasicMaterial({ map: glowTexture(), color: GOLD, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
   glow.rotation.x = -Math.PI / 2; glow.position.y = -0.56; scene.add(glow);
 
+  // ── VISUALIZER RING: equalizer bars standing in a circle around the record, in the station's colour ──
+  const VN = mobile ? 48 : 72, HALF = VN / 2;
+  const vizGroup = new THREE.Group(); deck.add(vizGroup);
+  const barGeo = new THREE.BoxGeometry(1, 1, 1); barGeo.translate(0, 0.5, 0);
+  const barMat = new THREE.MeshBasicMaterial({ color: GOLD, transparent: true, opacity: 0.92, toneMapped: false });
+  const bars = new THREE.InstancedMesh(barGeo, barMat, VN); bars.frustumCulled = false; vizGroup.add(bars);
+  const capMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, toneMapped: false });
+  const caps = new THREE.InstancedMesh(barGeo, capMat, VN); caps.frustumCulled = false; vizGroup.add(caps);   // little white peak markers
+  const haloMat = new THREE.MeshBasicMaterial({ map: glowTexture(), color: GOLD, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+  const halo = new THREE.Mesh(new THREE.RingGeometry(0.6, 1.6, 96), haloMat); halo.rotation.x = -Math.PI / 2; vizGroup.add(halo);
+  let vizR = 1.78, vizH = 0.9, vizW = 0.075, vizOn = true, vizAmt = 0;
+  const lvl = new Float32Array(VN), peak = new Float32Array(VN), m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), v3 = new THREE.Vector3(), s3 = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
+  function placeViz(cx, cy, cz, r) { vizGroup.position.set(cx, cy, cz); vizR = r; vizH = r * 0.8; vizW = (2 * Math.PI * r / VN) * 0.42; halo.scale.setScalar(r / 1.2); }
+  placeViz(-0.45, 0.02, 0, 1.78);
+  function drawViz(now, dt) {
+    vizAmt += (((playing && vizOn) ? 1 : 0) - vizAmt) * Math.min(1, dt * 3);
+    vizGroup.visible = vizAmt > 0.01; if (!vizGroup.visible) return;
+    const real = getBands(HALF), t = now / 1000;
+    // without the real sound (phones), fake a groove: a kick on the beat plus wandering highs
+    const beat = Math.pow(Math.max(0, Math.sin(t * Math.PI * 2 * 1.02)), 6);
+    for (let i = 0; i < VN; i++) {
+      const b = i < HALF ? i : VN - 1 - i;                        // mirror: bass at the front, treble at the back
+      const f = b / HALF;
+      let v = real ? Math.pow(real[b], 1.1) * 1.15
+                   : (0.06 + 0.8 * beat * Math.pow(1 - f, 1.4) + 0.42 * Math.pow(0.5 + 0.5 * Math.sin(t * (2.3 + f * 6.1) + b * 2.3), 3) * (0.5 + f * 0.6) + 0.18 * Math.pow(0.5 + 0.5 * Math.sin(t * 13.7 + b * 4.1), 4));
+      v = Math.max(0.03, Math.min(1, v)) * vizAmt;
+      lvl[i] += (v - lvl[i]) * (v > lvl[i] ? 0.55 : 0.14);
+      peak[i] = Math.max(lvl[i], peak[i] - dt * 0.45);
+      const a = (i / VN) * Math.PI * 2 + Math.PI / 2 + t * 0.12;     // the ring turns slowly
+      const x = Math.cos(a) * vizR, z = Math.sin(a) * vizR;
+      q4.setFromAxisAngle(Y, -a);
+      m4.compose(v3.set(x, 0, z), q4, s3.set(vizW, 0.01 + lvl[i] * vizH, vizW * 0.6)); bars.setMatrixAt(i, m4);
+      m4.compose(v3.set(x, 0.02 + peak[i] * vizH, z), q4, s3.set(vizW, vizH * 0.03, vizW * 0.6)); caps.setMatrixAt(i, m4);
+    }
+    bars.instanceMatrix.needsUpdate = true; caps.instanceMatrix.needsUpdate = true;
+    barMat.color.copy(glowColor); haloMat.color.copy(glowColor);
+    capMat.opacity = 0.85 * vizAmt; barMat.opacity = 0.92 * vizAmt;
+    let bass = 0; for (let i = 0; i < 6; i++) bass += lvl[i]; haloMat.opacity = (0.08 + bass / 6 * 0.35) * vizAmt;
+  }
+
   // ── the Blender-modelled deck (matte black + gold, Wave Seal label) replaces the stand-in once it loads ──
   const placeholder = deck.children.slice();
   const gl = new GLTFLoader(); gl.setMeshoptDecoder(MeshoptDecoder);
@@ -138,6 +178,11 @@ export function createTurntable(canvas, { mobile = false, getBass = () => 0, onS
     spin = rec; spinY = rec.position.y; lift = 0.45 / K;
     arm = tone; REST = 0.21; PLAY_START = -0.19; PLAY_END = -0.52; armTilt = [0, 0];
     armY = REST; arm.rotation.y = armY;
+    deck.updateMatrixWorld(true);
+    const bb = new THREE.Box3().setFromObject(rec), c = bb.getCenter(new THREE.Vector3()), top = bb.max.y;
+    deck.worldToLocal(c); const r = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / 2 / (deck.scale.x || 1);
+    deck.add(vizGroup);
+    placeViz(c.x, deck.worldToLocal(new THREE.Vector3(0, top, 0)).y - 0.04, c.z, r * 1.04);
     waveLabel = wave;
     loop();
   });
@@ -220,6 +265,7 @@ export function createTurntable(canvas, { mobile = false, getBass = () => 0, onS
     tilt.x += (pointer.x - tilt.x) * 0.05; tilt.y += (pointer.y - tilt.y) * 0.05;
     deck.rotation.y = -0.08 + tilt.x * 0.12 + (mobile ? Math.sin(now / 4000) * 0.05 : 0);
     deck.rotation.x = tilt.y * 0.05;
+    drawViz(now, dt);
     renderer.render(scene, camera);
     loop();
   }
@@ -230,6 +276,7 @@ export function createTurntable(canvas, { mobile = false, getBass = () => 0, onS
     setPlaying(p) { playing = p; loop(); },
     setProgress(p) { progress = Math.max(0, Math.min(1, p || 0)); },
     setGlow(hex) { glowColor.set(hex); },
+    setVisualizer(on) { vizOn = !!on; loop(); },
     setCover(url) {
       if (!url) return;
       loader.load(url, (t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
@@ -239,7 +286,7 @@ export function createTurntable(canvas, { mobile = false, getBass = () => 0, onS
       disposed = true; cancelAnimationFrame(raf); ro.disconnect(); io.disconnect();
       document.removeEventListener("visibilitychange", onVis); window.removeEventListener("pointermove", onMove);
       canvas.removeEventListener("pointerdown", onDown); canvas.removeEventListener("pointermove", onDrag); canvas.removeEventListener("pointerup", onUp); canvas.removeEventListener("pointercancel", onUp); canvas.removeEventListener("touchstart", onTouch);
-      renderer.dispose(); pmrem.dispose();
+      barGeo.dispose(); renderer.dispose(); pmrem.dispose();
     },
   };
 }
