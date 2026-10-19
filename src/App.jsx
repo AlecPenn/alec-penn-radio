@@ -518,17 +518,51 @@ function VUMeter({ active }) {
   );
 }
 
+/* ── SONG CARD: tap the record and its sleeve flips over to show what's playing ── */
+function SongCard({ song, glow, mobile, onClose }) {
+  const [flip,setFlip]=useState(false);
+  useEffect(()=>{ const t=setTimeout(()=>setFlip(true),550); return()=>clearTimeout(t); },[song.t]);
+  const W=mobile?210:230;
+  const face={ position:"absolute",inset:0,backfaceVisibility:"hidden",WebkitBackfaceVisibility:"hidden",borderRadius:6,overflow:"hidden",boxShadow:`0 18px 50px #000c, 0 0 0 1px ${glow}55, 0 0 34px ${glow}33` };
+  return (
+    <div onClick={onClose} style={{ position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"radial-gradient(circle, #0008 0%, #0000 70%)",zIndex:3,perspective:900,animation:"sc-in .45s cubic-bezier(.2,.9,.3,1.2)" }}>
+      <style>{"@keyframes sc-in{from{opacity:0;transform:translateY(40px) scale(.85)}to{opacity:1;transform:none}}"}</style>
+      <div onClick={e=>e.stopPropagation()} style={{ position:"relative",width:W,height:W,transformStyle:"preserve-3d",transition:"transform .8s cubic-bezier(.3,1.3,.5,1)",transform:flip?"rotateY(180deg)":"rotateY(0deg)",cursor:"pointer" }} onDoubleClick={()=>setFlip(f=>!f)}>
+        <div style={{ ...face,background:"#111" }} onClick={()=>setFlip(true)}>
+          {song.cover?<img src={song.cover} alt="" style={{ width:"100%",height:"100%",objectFit:"cover",display:"block" }}/>:null}
+        </div>
+        <div onClick={()=>setFlip(false)} style={{ ...face,transform:"rotateY(180deg)",background:`linear-gradient(160deg,#1a1410 0%,#0c0907 100%)`,border:`1px solid ${glow}66`,padding:mobile?"16px 16px":"18px 18px",display:"flex",flexDirection:"column",boxSizing:"border-box" }}>
+          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+            <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,letterSpacing:"0.18em",color:glow }}>● NOW SPINNING</span>
+            <button onClick={onClose} aria-label="Close" style={{ background:"none",border:"none",color:C.deepGold,fontSize:16,cursor:"pointer",padding:0,lineHeight:1 }}>×</button>
+          </div>
+          <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:song.t.length>22?24:30,lineHeight:0.95,color:C.cream,letterSpacing:"0.03em",marginTop:12,wordBreak:"break-word" }}>{song.t}</div>
+          <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:10,letterSpacing:"0.14em",color:C.warmGold,marginTop:8,textTransform:"uppercase" }}>{song.station} · 111.1 IM</div>
+          <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,letterSpacing:"0.12em",color:C.deepGold,marginTop:4 }}>ALEC PENN · CC0 · FREE FOREVER</div>
+          <div style={{ flex:1 }}/>
+          <a href={`https://edensgate.art/?q=${encodeURIComponent(song.t)}`} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
+            style={{ display:"block",textAlign:"center",background:glow,color:C.black,borderRadius:4,padding:"9px 8px",fontFamily:"'JetBrains Mono',monospace",fontSize:10,fontWeight:700,letterSpacing:"0.12em",textDecoration:"none" }}>↓ FREE AT EDEN'S GATE</a>
+          <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:8,color:C.deepGold+"aa",textAlign:"center",marginTop:7,letterSpacing:"0.1em" }}>TAP THE SLEEVE TO FLIP IT BACK</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── 3D TURNTABLE ── */
 let _webgl=null;
 function hasWebGL(){ if(_webgl!==null) return _webgl; try{ const c=document.createElement("canvas"); const gl=window.WebGLRenderingContext&&(c.getContext("webgl2")||c.getContext("webgl")); _webgl=!!gl; gl?.getExtension("WEBGL_lose_context")?.loseContext(); }catch(e){ _webgl=false; } return _webgl; }
-function Turntable({ playing, cover, glow, progress, mobile, height }) {
+function Turntable({ playing, cover, glow, progress, mobile, height, song }) {
+  const [card,setCard]=useState(false);
+  const songRef=useRef(song); songRef.current=song;
+  useEffect(()=>{ if(!card) return; const t=setTimeout(()=>setCard(false),12000); return()=>clearTimeout(t); },[card,song?.t]);
   const canvasRef=useRef(null), ttRef=useRef(null);
   const [failed,setFailed]=useState(()=>!hasWebGL());
   useEffect(()=>{
     if(failed) return; let alive=true;
     import("./turntable.js").then(m=>{
       if(!alive||!canvasRef.current) return;
-      try{ ttRef.current=m.createTurntable(canvasRef.current,{ mobile, getBass, getBands, onScratch:(v)=>window._aprScratch?.(v) });
+      try{ ttRef.current=m.createTurntable(canvasRef.current,{ mobile, getBass, getBands, onScratch:(v)=>window._aprScratch?.(v), onTap:()=>{ if(songRef.current) setCard(c=>!c); } });
         ttRef.current.setGlow(glow); ttRef.current.setPlaying(playing); ttRef.current.setVisualizer(vizRef.current); if(cover) ttRef.current.setCover(cover);
       }catch(e){ console.error(e); setFailed(true); }
     }).catch(()=>setFailed(true));
@@ -544,11 +578,12 @@ function Turntable({ playing, cover, glow, progress, mobile, height }) {
   if(failed) return null;
   return (
     <div style={{ position:"relative",width:"100%" }}>
-      <canvas ref={canvasRef} aria-label="Record player showing the song that's playing. Drag the record to spin it." style={{ display:"block",width:"100%",height,touchAction:"pan-y" }}/>
+      <canvas ref={canvasRef} aria-label="Record player showing the song that's playing. Drag the record to spin it, tap it to see the song." style={{ display:"block",width:"100%",height,touchAction:"pan-y" }}/>
       <button onClick={()=>setViz(v=>!v)} aria-pressed={viz} title="Turn the visualizer ring on or off"
         style={{ position:"absolute",top:mobile?8:6,right:mobile?16:8,background:viz?glow+"22":"transparent",border:`1px solid ${viz?glow:C.deepGold+"55"}`,color:viz?glow:C.deepGold,borderRadius:20,padding:mobile?"7px 12px":"4px 10px",fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?10:9,letterSpacing:"0.14em",cursor:"pointer" }}>
         {viz?"◉ VISUALIZER":"○ VISUALIZER"}
       </button>
+      {card&&song&&<SongCard song={song} glow={glow} mobile={mobile} onClose={()=>setCard(false)}/>}
     </div>
   );
 }
@@ -1098,7 +1133,7 @@ export default function AlecPennRadio() {
                 AI co-created. Multi-genre. Free for everyone.
               </p>
 
-              {mobile&&<div style={{ margin:"0 -16px 14px" }}><Turntable playing={tuned} cover={thumb} glow={activeGlow} progress={progress[1]?progress[0]/progress[1]:0} mobile={true} height={250}/></div>}
+              {mobile&&<div style={{ margin:"0 -16px 14px" }}><Turntable playing={tuned} cover={thumb} glow={activeGlow} progress={progress[1]?progress[0]/progress[1]:0} mobile={true} height={250} song={onAirInfo?{ t:onAirInfo.track.t, station:onAirInfo.track.genre||genre, cover:onAirInfo.track.cover||thumb }:null}/></div>}
 
               {/* Freq + oscilloscope + album art */}
               <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:20,flexWrap:"wrap" }}>
@@ -1200,7 +1235,7 @@ export default function AlecPennRadio() {
             <div style={{ display:"flex",flexDirection:mobile?"row":"column",alignItems:"center",gap:mobile?16:20,justifyContent:mobile?"space-between":"center",flexWrap:mobile?"wrap":"nowrap" }}>
               {!mobile&&(
                 <div style={{ width:420,display:"flex",flexDirection:"column",alignItems:"center",gap:6 }}>
-                  <Turntable playing={tuned} cover={thumb} glow={activeGlow} progress={progress[1]?progress[0]/progress[1]:0} mobile={false} height={330}/>
+                  <Turntable playing={tuned} cover={thumb} glow={activeGlow} progress={progress[1]?progress[0]/progress[1]:0} mobile={false} height={330} song={onAirInfo?{ t:onAirInfo.track.t, station:onAirInfo.track.genre||genre, cover:onAirInfo.track.cover||thumb }:null}/>
                   <div style={{ display:"flex",gap:18,alignItems:"baseline",fontFamily:"'JetBrains Mono',monospace" }}>
                     <span style={{ fontSize:18,color:C.gold }}>{station?station.total.toLocaleString():"—"}</span>
                     <span style={{ fontSize:mobile?11:9,color:C.sageTeal,letterSpacing:"0.14em" }}>TRACKS ON AIR</span>

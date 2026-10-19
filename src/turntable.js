@@ -43,7 +43,7 @@ function glowTexture() {
   return new THREE.CanvasTexture(c);
 }
 
-export function createTurntable(canvas, { mobile = false, getBass = () => 0, getBands = () => null, onScratch = null } = {}) {
+export function createTurntable(canvas, { mobile = false, getBass = () => 0, getBands = () => null, onScratch = null, onTap = null } = {}) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -223,7 +223,7 @@ export function createTurntable(canvas, { mobile = false, getBass = () => 0, get
   }
   const onDown = (e) => {
     const p = recordAngle(e); if (!p || !p.inside) return;
-    grab = { angle: p.a, t: performance.now(), vel: 0 };
+    grab = { angle: p.a, t: performance.now(), vel: 0, t0: performance.now(), turned: 0, x0: e.clientX, y0: e.clientY };
     canvas.setPointerCapture?.(e.pointerId); canvas.style.cursor = "grabbing"; loop();
   };
   const onDrag = (e) => {
@@ -231,11 +231,14 @@ export function createTurntable(canvas, { mobile = false, getBass = () => 0, get
     const p = recordAngle(e); if (!p) return;
     let d = p.a - grab.angle; if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI;
     const now = performance.now(), dts = Math.max(0.008, (now - grab.t) / 1000);
-    spin.rotation.y -= d;                                  // the record follows your finger
+    spin.rotation.y -= d; grab.turned += Math.abs(d);      // the record follows your finger
     grab.vel = grab.vel * 0.6 + (d / dts) * 0.4; grab.angle = p.a; grab.t = now;
     onScratch && onScratch(d / dts);
   };
-  const onUp = () => { if (!grab) return; speed = Math.max(-25, Math.min(25, grab.vel)); grab = null; canvas.style.cursor = ""; onScratch && onScratch(null); loop(); };
+  const onUp = (e) => { if (!grab) return;
+    const tap = performance.now() - grab.t0 < 400 && grab.turned < 0.12 && Math.hypot((e.clientX ?? grab.x0) - grab.x0, (e.clientY ?? grab.y0) - grab.y0) < 10;
+    if (tap && onTap) { grab = null; canvas.style.cursor = ""; onScratch && onScratch(null); onTap(); loop(); return; }
+    speed = Math.max(-25, Math.min(25, grab.vel)); grab = null; canvas.style.cursor = ""; onScratch && onScratch(null); loop(); };
   // on phones, a touch that starts on the record spins it instead of scrolling the page
   const onTouch = (e) => { const t = e.touches[0]; const p = t && recordAngle(t); if (p && p.inside) e.preventDefault(); };
   canvas.addEventListener("pointerdown", onDown); canvas.addEventListener("pointermove", onDrag);

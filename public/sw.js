@@ -90,7 +90,7 @@ self.addEventListener("fetch", (e) => {
   if (url.origin === location.origin) {
     if (url.pathname.startsWith("/saved-audio/")) return e.respondWith(savedSong(req));
     if (req.mode === "navigate") {
-      if (/\.html?$/.test(url.pathname) && url.pathname !== "/index.html") return;   // stand-alone pages (e.g. /soundtest.html): leave alone
+      if ((/\.html?$/.test(url.pathname) && url.pathname !== "/index.html") || url.pathname === "/mushy") return;   // stand-alone pages (e.g. /soundtest.html): leave alone
       return e.respondWith(networkFirst(req, APP, "/"));   // every app page is the same app
     }
     if (url.pathname === "/station.json") return e.respondWith(networkFirst(req, APP));
