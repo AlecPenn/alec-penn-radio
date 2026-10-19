@@ -518,47 +518,9 @@ function VUMeter({ active }) {
   );
 }
 
-/* ── 3D RECORD CRATE: flip through the stations like vinyl, pull one out to play it ── */
-function RecordCrate({ genres, current, onPick, mobile, glow }) {
-  const canvasRef=useRef(null), crRef=useRef(null);
-  const [failed,setFailed]=useState(()=>!hasWebGL());
-  const [focusName,setFocusName]=useState(current);
-  const pickRef=useRef(onPick); pickRef.current=onPick;
-  const key=genres.map(g=>g.slug).join(",");
-  useEffect(()=>{
-    if(failed||!genres.length) return; let alive=true;
-    import("./crate.js").then(m=>{
-      if(!alive||!canvasRef.current) return;
-      try{
-        const stations=genres.map(g=>({ slug:g.slug, name:g.name, art:`/sleeves/${g.slug}.webp`, g }));
-        crRef.current=m.createCrate(canvasRef.current,{ stations, current:(genres.find(g=>g.name===current)||genres[0]).slug, mobile,
-          onPick:(s)=>pickRef.current(s.g), onFocus:(s)=>setFocusName(s.name) });
-      }catch(e){ console.error(e); setFailed(true); }
-    }).catch(()=>setFailed(true));
-    return()=>{ alive=false; crRef.current?.dispose(); crRef.current=null; };
-  },[failed,key]);
-  useEffect(()=>{ const g=genres.find(x=>x.name===current); if(g) crRef.current?.setPlaying(g.slug); },[current]);
-  if(failed) return null;
-  const btn={ background:"transparent",border:`1px solid ${C.deepGold}66`,color:C.warmGold,borderRadius:6,cursor:"pointer",fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?18:16,lineHeight:1,padding:mobile?"10px 12px":"6px 12px",minWidth:mobile?42:36 };
-  const isOn=focusName===current;
-  return (
-    <div style={{ marginBottom:12 }}>
-      <canvas ref={canvasRef} aria-label="Record crate: flip through the stations and pull one out to play it" style={{ display:"block",width:"100%",height:mobile?280:300,touchAction:"none",cursor:"grab" }}/>
-      <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:4 }}>
-        <button style={btn} aria-label="Previous station" onClick={()=>crRef.current?.prev()}>‹</button>
-        <div style={{ flex:"1 1 0",minWidth:0,maxWidth:220,textAlign:"center",fontFamily:"'Bebas Neue',sans-serif",fontSize:mobile?22:20,letterSpacing:"0.08em",color:isOn?glow:C.cream,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>{isOn?"♪ ":""}{focusName}</div>
-        <button style={btn} aria-label="Next station" onClick={()=>crRef.current?.next()}>›</button>
-        <button style={{ ...btn,background:isOn?glow:C.gold,color:C.black,border:"none",fontWeight:700 }} onClick={()=>crRef.current?.playFocused()}>{isOn?"ON AIR":"PLAY"}</button>
-      </div>
-      <div style={{ textAlign:"center",fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?10:9,color:C.deepGold+"aa",letterSpacing:"0.12em",marginTop:6 }}>
-        {mobile?"SWIPE THE CRATE TO DIG · TAP A RECORD TO PLAY":"DRAG OR SCROLL THE CRATE TO DIG · CLICK THE FRONT RECORD TO PLAY"}
-      </div>
-    </div>
-  );
-}
-
 /* ── 3D TURNTABLE ── */
-function hasWebGL(){ try{ const c=document.createElement("canvas"); return !!(window.WebGLRenderingContext&&(c.getContext("webgl2")||c.getContext("webgl"))); }catch(e){ return false; } }
+let _webgl=null;
+function hasWebGL(){ if(_webgl!==null) return _webgl; try{ const c=document.createElement("canvas"); const gl=window.WebGLRenderingContext&&(c.getContext("webgl2")||c.getContext("webgl")); _webgl=!!gl; gl?.getExtension("WEBGL_lose_context")?.loseContext(); }catch(e){ _webgl=false; } return _webgl; }
 function Turntable({ playing, cover, glow, progress, mobile, height }) {
   const canvasRef=useRef(null), ttRef=useRef(null);
   const [failed,setFailed]=useState(()=>!hasWebGL());
@@ -827,8 +789,6 @@ export default function AlecPennRadio() {
   const [thumb,setThumb]=useState(null);
   const [volume,setVolume]=useState(80);
   const [easterEgg,setEasterEgg]=useState(null);
-  const [showList,setShowList]=useState(()=>{ try{ return localStorage.getItem("aprList")==="1"; }catch(e){ return false; } });
-  useEffect(()=>{ try{ localStorage.setItem("aprList",showList?"1":"0"); }catch(e){} },[showList]);
   const [keyBuffer,setKeyBuffer]=useState("");
   const konami=useRef([]);
   const sealTaps=useRef([]);
@@ -1191,13 +1151,7 @@ export default function AlecPennRadio() {
                 <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:9,color:C.deepGold,marginBottom:16,letterSpacing:"0.1em" }}>LOCKING ONTO SIGNAL...</div>
               )}
 
-              {/* The record crate (3D), with the plain list one tap away */}
-              {station&&<RecordCrate genres={GENRES} current={genre} onPick={handleGenre} mobile={mobile} glow={activeGlow}/>}
-              <button onClick={()=>setShowList(v=>!v)} style={{ background:"none",border:"none",cursor:"pointer",color:C.deepGold,fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:9,letterSpacing:"0.14em",padding:"4px 0",marginBottom:8 }}>
-                {showList?"▾ HIDE STATION LIST":"▸ SHOW ALL STATIONS AS A LIST"}
-              </button>
               {/* Genre buttons */}
-              {(showList||!hasWebGL())&&<>
               <div style={mobile?{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }:{ display:"flex",gap:6,flexWrap:"wrap" }}>
                 {GENRES.filter(g=>!g.separate).map(g=>(
                   <button key={g.name} onClick={()=>handleGenre(g)}
@@ -1215,7 +1169,6 @@ export default function AlecPennRadio() {
                   </div>
                 </div>
               )}
-              </>}
 
               <OfflineSaver channel={activeChannel} name={genre} mobile={mobile} glow={activeGlow}/>
 
