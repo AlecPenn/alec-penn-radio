@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getLatestVideos, getTopVideos, getTopShorts, formatViews } from "./youtube.js";
 import { loadStation, onAir, audioUrl, gainMul, upcoming, offlineCoverage } from "./station.js";
+import zineTexture from "./assets/zine.webp";
 import { savedKeys, localUrlFor, keyOf, saveMany, pruneAuto, autoMinutes, setAutoMinutes, supported as offlineSupported } from "./saved.js";
 import { canAnalyse, attach as attachAnalyser, resume as resumeAnalyser, detach as detachAnalyser, getWave, getBands, getBass, live as analyserLive } from "./analyser.js";
 
@@ -31,6 +32,12 @@ const THEMES = {
     deepBurgundy:"#2A2A2A",roseMaroon:"#FF3D8B",dustyRose:"#FF8CBF",cream:"#FAFAFA",
     panel:"linear-gradient(180deg,rgba(28,28,28,0.9) 0%,rgba(18,18,18,0.94) 100%)",panelBar:"#242424" }, swatch:["#141414","#FFE600","#FF3D8B","#3EC1FF"] },
 };
+THEMES.static={ name:"Static", c:{
+    black:"#2a1c21",gold:"#F2AFBF",deepGold:"#B57F8B",warmGold:"#F6CFD7",
+    paleGold:"#FFF2E8",teal:"#5E8F8A",lazyTeal:"#74A6A0",sageTeal:"#9CCBC5",
+    mistTeal:"#CDE5E1",ghostTeal:"#EEF6F5",burgundy:"#8E4A5A",
+    deepBurgundy:"#3a242a",roseMaroon:"#C0687A",dustyRose:"#EAA9B7",cream:"#FBF3EA",
+    panel:"linear-gradient(180deg,rgba(46,30,35,0.9) 0%,rgba(34,22,26,0.94) 100%)",panelBar:"#4a2f36" }, swatch:["#F2AFBF","#FBF3EA","#9CCBC5"] };
 let C = THEMES.classic.c;
 const readTheme=()=>{ try{ const t=localStorage.getItem("aprTheme"); return THEMES[t]?t:"classic"; }catch(e){ return "classic"; } };
 
@@ -78,7 +85,15 @@ const EASTER_EGGS = {
   "ALECPENN": { msg:"YOU FOUND THE SIGNAL. WELCOME TO THE INNER CIRCLE.", playlist:"PLmNBbWRYKMij00GHXkVmWKWOkjGHvkZUO" },
   "EDENGATE": { msg:"THE GATE IS OPEN. IT ALWAYS WAS.", playlist:"PLmNBbWRYKMiijl7vg_jK_uV_dG8L6Nruh" },
   "FREEMUSI": { msg:"EVERY SONG. ZERO COST. FOREVER FREE.", playlist:"PLmNBbWRYKMiiqILu7MqJ1lXKOJwvx4f6u" },
+  "TOMMY":    { msg:"TOMMY WAS HERE. HE DOESN'T PAY RENT EITHER.", fx:"cat" },
 };
+// Match a typed code (from the keyboard or the secret-code box). Accepts "FREEMUSIC" too.
+function findEgg(text){
+  const t=String(text||"").toUpperCase().replace(/[^A-Z]/g,"");
+  for(const k of Object.keys(EASTER_EGGS)) if(t.endsWith(k)||t===k+"C") return EASTER_EGGS[k];
+  return null;
+}
+const KONAMI=["ArrowUp","ArrowUp","ArrowDown","ArrowDown","ArrowLeft","ArrowRight","ArrowLeft","ArrowRight","b","a"];
 
 const TICKER_ITEMS = [
   "NOW BROADCASTING · ALEC PENN RADIO · 111.1 IM",
@@ -383,7 +398,35 @@ function ThemeBackdrop({ theme }){
       ))}
     </div>
   );
+  if(theme==="static") return (
+    <div aria-hidden="true" style={{ ...layer,backgroundColor:"#3a242a",backgroundImage:`linear-gradient(rgba(42,22,30,0.62),rgba(42,22,30,0.74)),url(${zineTexture})`,backgroundSize:"auto,700px 700px" }}>
+      <div style={{ position:"absolute",inset:0,backgroundImage:"repeating-linear-gradient(0deg,rgba(0,0,0,0.06) 0 1px,transparent 1px 3px)" }}/>
+      <CrtTv style={{ left:"2%",bottom:"4%",width:150 }}/>
+      <CrtTv style={{ left:"2%",bottom:"calc(4% + 128px)",width:130 }} tilt={-3}/>
+      <CrtTv style={{ right:"2%",top:"18%",width:140 }} tilt={4}/>
+    </div>
+  );
   return null;
+}
+
+// An old TV playing live static (the "Static" vibe). Hidden on phones to keep the screen clear.
+function CrtTv({ style, tilt=2 }){
+  const ref=useRef(null);
+  useEffect(()=>{
+    const cv=ref.current; if(!cv) return; const ctx=cv.getContext("2d"); const img=ctx.createImageData(cv.width,cv.height);
+    if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches){ for(let i=0;i<img.data.length;i+=4){ const v=Math.random()*255; img.data[i]=v*0.8;img.data[i+1]=v;img.data[i+2]=v;img.data[i+3]=255; } ctx.putImageData(img,0,0); return; }
+    let raf, last=0;
+    const draw=(t)=>{ raf=requestAnimationFrame(draw); if(t-last<70) return; last=t;
+      for(let i=0;i<img.data.length;i+=4){ const v=Math.random()*255; img.data[i]=v*0.75; img.data[i+1]=v*0.98; img.data[i+2]=v; img.data[i+3]=255; }
+      ctx.putImageData(img,0,0); };
+    raf=requestAnimationFrame(draw); return()=>cancelAnimationFrame(raf);
+  },[]);
+  return (
+    <div className="apr-tv" style={{ position:"absolute",padding:"10px 10px 16px",borderRadius:14,transform:`rotate(${tilt}deg)`,
+      backgroundImage:`linear-gradient(rgba(242,175,191,0.35),rgba(242,175,191,0.35)),url(${zineTexture})`,backgroundSize:"auto,300px",boxShadow:"0 10px 30px rgba(0,0,0,0.45)",...style }}>
+      <canvas ref={ref} width="80" height="60" style={{ width:"100%",aspectRatio:"4 / 3",display:"block",borderRadius:"14px / 18px",imageRendering:"pixelated",boxShadow:"inset 0 0 18px rgba(0,0,0,0.8)",background:"#222" }}/>
+    </div>
+  );
 }
 
 function VibePicker({ theme, setTheme, mobile }){
@@ -585,20 +628,30 @@ function BroadcastTicker({ active, nowPlaying }) {
 }
 
 /* ── EASTER EGG DISPLAY ── */
-function EasterEggMsg({ msg, onClose }) {
-  useEffect(()=>{const t=setTimeout(onClose,5000);return()=>clearTimeout(t);},[]);
+function EasterEggMsg({ egg, onClose }) {
+  const { msg, playlist, fx }=egg;
+  useEffect(()=>{const t=setTimeout(onClose,playlist?9000:6000);return()=>clearTimeout(t);},[]);
   return (
-    <div style={{ position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",
+    <>
+    {fx==="cat"&&<div aria-hidden="true" style={{ position:"fixed",bottom:18,left:0,zIndex:499,fontSize:54,pointerEvents:"none",animation:"cat-walk 6s linear forwards" }}>🐈‍⬛</div>}
+    {(fx==="sparkle"||fx==="burst")&&<div aria-hidden="true" style={{ position:"fixed",inset:0,zIndex:499,pointerEvents:"none",overflow:"hidden" }}>
+      {Array.from({length:28}).map((_,i)=>{ const a=i/28*Math.PI*2, d=180+(i%5)*50;
+        return <span key={i} style={{ position:"absolute",left:"50%",top:"50%",fontSize:14+(i%4)*6,color:i%3?C.gold:C.cream,"--dx":`${Math.cos(a)*d}px`,"--dy":`${Math.sin(a)*d}px`,animation:`egg-burst ${1.4+(i%3)*0.4}s ease-out forwards` }}>{fx==="sparkle"?"✦":"★"}</span>; })}
+    </div>}
+    <div role="dialog" onClick={onClose} style={{ cursor:"pointer", position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",
       zIndex:500,background:`${C.black}ee`,border:`1px solid ${C.gold}`,borderRadius:12,
       padding:"24px 32px",textAlign:"center",maxWidth:360,
       boxShadow:`0 0 60px ${C.gold}44`,animation:"float-in 0.4s ease" }}>
       <WaveSeal size={48} color={C.gold} glow={true}/>
       <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.gold,
         letterSpacing:"0.14em",marginTop:16,lineHeight:1.8 }}>{msg}</div>
+      {playlist&&<a href={`https://www.youtube.com/playlist?list=${playlist}`} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
+        style={{ display:"inline-block",marginTop:14,padding:"9px 16px",borderRadius:6,background:C.burgundy,color:C.cream,textDecoration:"none",fontFamily:"'JetBrains Mono',monospace",fontSize:11,letterSpacing:"0.1em",border:`1px solid ${C.roseMaroon}` }}>▶ OPEN THE SECRET PLAYLIST</a>}
       <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:C.deepGold,marginTop:12 }}>
-        — CLICK TO DISMISS —
+        — TAP TO CLOSE —
       </div>
     </div>
+    </>
   );
 }
 
@@ -719,6 +772,12 @@ export default function AlecPennRadio() {
   const [volume,setVolume]=useState(80);
   const [easterEgg,setEasterEgg]=useState(null);
   const [keyBuffer,setKeyBuffer]=useState("");
+  const konami=useRef([]);
+  const sealTaps=useRef([]);
+  const pressTimer=useRef(null);
+  const [codeBox,setCodeBox]=useState(false);
+  const [code,setCode]=useState("");
+  const [codeMiss,setCodeMiss]=useState(false);
   const freqRef=useRef(null);
 
   useEffect(()=>{const t=setTimeout(()=>setSealReady(true),500);return()=>clearTimeout(t);},[]);
@@ -757,11 +816,16 @@ export default function AlecPennRadio() {
   useEffect(()=>{
     const handler=(e)=>{
       if(e.key.length===1&&e.key.match(/[A-Za-z]/)){
+        if(e.target.tagName==="INPUT") return;
         const next=(keyBuffer+e.key.toUpperCase()).slice(-8);
         setKeyBuffer(next);
-        const egg=EASTER_EGGS[next];
+        const egg=findEgg(next);
         if(egg){ setEasterEgg(egg); setKeyBuffer(""); }
       }
+      // Konami code: ↑ ↑ ↓ ↓ ← → ← → B A
+      const k=e.key.length===1?e.key.toLowerCase():e.key;
+      konami.current=[...konami.current,k].slice(-10);
+      if(konami.current.join()===KONAMI.join()){ konami.current=[]; setEasterEgg({ msg:"CHEAT CODE ACCEPTED. +30 LIVES. UNLIMITED SKIPS. (THEY WERE ALREADY UNLIMITED.)", fx:"burst" }); }
     };
     window.addEventListener("keydown",handler);
     return()=>window.removeEventListener("keydown",handler);
@@ -795,6 +859,28 @@ export default function AlecPennRadio() {
     setGenre(g.name);setActiveGlow(g.glow);
     if(!tuned) handleTuneIn();
   },[tuned,handleTuneIn]);
+
+  // Egg: tap the logo in the top corner 7 times quickly.
+  const tapSeal=()=>{
+    const t=Date.now(); sealTaps.current=[...sealTaps.current.filter(x=>t-x<4000),t];
+    if(sealTaps.current.length>=7){ sealTaps.current=[]; setEasterEgg({ msg:"SEVEN TAPS. THE SEAL IS BROKEN. YOU'RE ONE OF US NOW.", fx:"burst" }); }
+  };
+  // Egg: press and hold the 111.1 dial for a pirate broadcast (jumps to a random station).
+  const holdStart=()=>{ clearTimeout(pressTimer.current); pressTimer.current=setTimeout(()=>{
+    const pool=GENRES.filter(g=>g.name!==genre); const g=pool[Math.floor(Math.random()*pool.length)]; if(!g) return;
+    handleGenre(g); setEasterEgg({ msg:`📡 PIRATE BROADCAST. HIJACKING THE SIGNAL… NOW PLAYING: ${g.name.toUpperCase()}.` });
+  },900); };
+  const holdEnd=()=>clearTimeout(pressTimer.current);
+  // Egg: be tuned in when the clock says 11:11.
+  useEffect(()=>{
+    if(!tuned) return;
+    let shown="";
+    const check=()=>{ const d=new Date(), key=d.toDateString()+d.getHours();
+      if((d.getHours()%12)===11&&d.getMinutes()===11&&shown!==key){ shown=key; setEasterEgg({ msg:"IT'S 11:11 ON 111.1. MAKE A WISH. ✦", fx:"sparkle" }); } };
+    check(); const id=setInterval(check,15000); return()=>clearInterval(id);
+  },[tuned]);
+  const submitCode=(e)=>{ e.preventDefault(); const egg=findEgg(code);
+    if(egg){ setEasterEgg(egg); setCode(""); setCodeBox(false); setCodeMiss(false); } else setCodeMiss(true); };
 
   const shareStation=()=>{
     const text=`🎵 Tuned into ${genre} on Alec Penn Radio · 111.1 IM · Free music, no gatekeepers · alecpennradio.com`;
@@ -830,10 +916,16 @@ export default function AlecPennRadio() {
         .theme-neon button{box-shadow:0 0 12px rgba(255,43,214,0.28);}
         .theme-graffiti h1,.theme-graffiti h2{font-family:'Permanent Marker',cursive!important;letter-spacing:0.02em!important;text-shadow:4px 4px 0 #000,-1px -1px 0 #000;transform:rotate(-2deg);}
         .theme-graffiti h1{color:#FFE600!important;}
+        .theme-static h1{font-family:'Special Elite','Courier New',monospace!important;background:#FBF3EA;color:#2a1c21!important;padding:6px 14px;display:inline-block;transform:rotate(-1.5deg);box-shadow:4px 4px 0 rgba(0,0,0,0.35);letter-spacing:0.02em!important;}
+        .theme-static h1 span{color:#8E4A5A!important;}
+        .theme-static h2{font-family:'Special Elite','Courier New',monospace!important;letter-spacing:0.04em!important;}
+        @media (max-width: 900px){.apr-tv{display:none;}}
         @media (prefers-reduced-motion: reduce){.apr *{animation:none!important;}}
         @keyframes glow-pulse{0%,100%{box-shadow:0 0 20px #2F6F6D44}50%{box-shadow:0 0 44px #2F6F6D88}}
         @keyframes horizon-scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
         @keyframes ticker-scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+        @keyframes cat-walk{from{transform:translateX(-80px) scaleX(-1)}to{transform:translateX(calc(100vw + 80px)) scaleX(-1)}}
+        @keyframes egg-burst{from{transform:translate(-50%,-50%) scale(0.4);opacity:1}to{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1);opacity:0}}
         @keyframes float-in{from{opacity:0;transform:translate(-50%,-60%)}to{opacity:1;transform:translate(-50%,-50%)}}
         .nav-link{color:#D4B96A;text-decoration:none;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;transition:color 0.15s;font-family:'JetBrains Mono',monospace;}
         .nav-link:hover{color:#C2A24D;}
@@ -841,7 +933,7 @@ export default function AlecPennRadio() {
 
       {!mobile&&<Cursor/>}
       <StaticFlash show={showStatic}/>
-      {easterEgg&&<EasterEggMsg msg={easterEgg.msg} onClose={()=>setEasterEgg(null)}/>}
+      {easterEgg&&<EasterEggMsg key={easterEgg.msg} egg={easterEgg} onClose={()=>setEasterEgg(null)}/>}
 
       <div style={{ position:"fixed",inset:0,pointerEvents:"none",zIndex:100,overflow:"hidden",opacity:0.02 }}>
         <div style={{ width:"100%",height:2,background:C.cream,animation:"scanline 9s linear infinite" }}/>
@@ -860,7 +952,7 @@ export default function AlecPennRadio() {
         padding:`0 ${pad}`,display:"flex",alignItems:"center",justifyContent:"space-between",
         height:mobile?52:60,transition:"border-color 0.7s" }}>
         <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-          <WaveSeal size={mobile?38:46} color={tuned?activeGlow:C.gold} glow={tuned}/>
+          <span onClick={tapSeal} style={{ display:"inline-flex",WebkitTapHighlightColor:"transparent" }}><WaveSeal size={mobile?38:46} color={tuned?activeGlow:C.gold} glow={tuned}/></span>
           <div style={{ display:"flex",flexDirection:"column",gap:0,lineHeight:1 }}>
             <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:mobile?15:18,color:C.cream,letterSpacing:"0.14em" }}>ALEC PENN</span>
             <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:mobile?11:13,color:tuned?activeGlow:C.gold,letterSpacing:"0.28em",transition:"color 0.8s" }}>RADIO</span>
@@ -981,7 +1073,7 @@ export default function AlecPennRadio() {
 
               {/* Freq + oscilloscope + album art */}
               <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:20,flexWrap:"wrap" }}>
-                <div style={{ display:"inline-flex",alignItems:"baseline",gap:4,background:"#030201",border:`1px solid ${tuned?activeGlow+"55":C.deepGold+"28"}`,borderRadius:6,padding:mobile?"8px 14px":"10px 18px",transition:"border-color 0.7s" }}>
+                <div onPointerDown={holdStart} onPointerUp={holdEnd} onPointerLeave={holdEnd} onPointerCancel={holdEnd} onContextMenu={e=>e.preventDefault()} style={{ userSelect:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none",display:"inline-flex",alignItems:"baseline",gap:4,background:"#030201",border:`1px solid ${tuned?activeGlow+"55":C.deepGold+"28"}`,borderRadius:6,padding:mobile?"8px 14px":"10px 18px",transition:"border-color 0.7s" }}>
                   <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?24:32,fontWeight:500,color:tuning?C.warmGold:tuned?activeGlow:C.gold,letterSpacing:"0.05em",animation:tuned?"freq-flicker 3s ease infinite":"none",transition:"color 0.8s" }}>{freq.toFixed(1)}</span>
                   <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:14,color:C.deepGold }}>IM</span>
                 </div>
@@ -1187,10 +1279,17 @@ export default function AlecPennRadio() {
             <a href={YT} target="_blank" rel="noreferrer" style={{ background:C.burgundy,color:C.cream,padding:mobile?"12px 20px":"14px 32px",borderRadius:6,textDecoration:"none",fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:12,letterSpacing:"0.1em",border:`1px solid ${C.roseMaroon}` }}>▶ Subscribe on YouTube</a>
             <a href="https://edensgate.art" target="_blank" rel="noreferrer" style={{ background:"transparent",color:C.paleGold,padding:mobile?"12px 20px":"14px 32px",borderRadius:6,textDecoration:"none",fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:12,letterSpacing:"0.1em",border:`1px solid ${C.deepGold}55` }}>Eden's Gate ↗</a>
           </div>
-          {!mobile&&(
-            <div style={{ marginTop:24,fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:9,color:C.deepGold+"55",letterSpacing:"0.1em" }}>
-              PSST — TRY TYPING A SECRET CODE ON YOUR KEYBOARD
-            </div>
+          {!codeBox?(
+            <button onClick={()=>setCodeBox(true)} style={{ marginTop:24,background:"none",border:"none",cursor:"pointer",padding:8,fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:9,color:C.deepGold+"88",letterSpacing:"0.1em" }}>
+              {mobile?"PSST — GOT A SECRET CODE? TAP HERE":"PSST — TRY TYPING A SECRET CODE ON YOUR KEYBOARD (OR CLICK HERE)"}
+            </button>
+          ):(
+            <form onSubmit={submitCode} style={{ marginTop:24,display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap" }}>
+              <input autoFocus value={code} onChange={e=>{setCode(e.target.value);setCodeMiss(false);}} placeholder="SECRET CODE" maxLength={16} autoCapitalize="characters" autoComplete="off"
+                style={{ background:"#030201",border:`1px solid ${codeMiss?C.roseMaroon:C.deepGold+"66"}`,borderRadius:6,color:C.gold,padding:"10px 12px",fontFamily:"'JetBrains Mono',monospace",fontSize:16,letterSpacing:"0.15em",width:200,textTransform:"uppercase" }}/>
+              <button type="submit" style={{ background:C.burgundy,color:C.cream,border:`1px solid ${C.roseMaroon}`,borderRadius:6,padding:"10px 16px",fontFamily:"'JetBrains Mono',monospace",fontSize:12,letterSpacing:"0.1em",cursor:"pointer" }}>ENTER</button>
+              {codeMiss&&<div style={{ width:"100%",fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.dustyRose,letterSpacing:"0.1em" }}>NOTHING ON THAT FREQUENCY. KEEP TRYING.</div>}
+            </form>
           )}
         </div>
       </section>
