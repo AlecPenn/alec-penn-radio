@@ -632,13 +632,12 @@ function BroadcastTicker({ active, nowPlaying }) {
 function TommyCat({ onDone }){
   const ref=useRef(null); const [flat,setFlat]=useState(false);
   useEffect(()=>{
-    if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches){ setFlat(true); return; }
     let stop=null, gone=false;
-    import("./tommy3d.js").then(m=>{ if(gone) return; try{ stop=m.tommyAppears(ref.current,{ onDone:(e)=>{ if(e) setFlat(true); else onDone?.(); } }); }catch(e){ setFlat(true); } }).catch(()=>setFlat(true));
+    import("./tommy3d.js").then(m=>{ if(gone) return; try{ stop=m.tommyAppears(ref.current,{ calm:!!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches, onDone:(e)=>{ if(e) setFlat(true); else onDone?.(); } }); }catch(e){ setFlat(true); } }).catch(()=>setFlat(true));
     return()=>{ gone=true; stop?.(); };
   },[]);
   useEffect(()=>{ if(!flat) return; const t=setTimeout(()=>onDone?.(),6500); return()=>clearTimeout(t); },[flat]);
-  if(flat) return <div aria-hidden="true" style={{ position:"fixed",bottom:18,left:0,zIndex:499,fontSize:54,pointerEvents:"none",animation:"cat-walk 6s linear forwards" }}>🐈‍⬛</div>;
+  if(flat) return <div aria-hidden="true" style={{ position:"fixed",bottom:18,left:0,zIndex:499,fontSize:54,pointerEvents:"none",filter:"brightness(0) drop-shadow(0 0 6px #c2a24d)",animation:"cat-walk 6s linear forwards" }}>🐈</div>;
   return <canvas ref={ref} aria-hidden="true" style={{ position:"fixed",right:0,bottom:0,width:"min(100vw,520px)",height:"min(62vh,440px)",zIndex:499,pointerEvents:"none" }}/>;
 }
 function EasterEggMsg({ egg, onClose }) {

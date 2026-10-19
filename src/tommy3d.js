@@ -10,7 +10,8 @@ import tommyUrl from "./assets/tommy.glb?url";
 const ease = (x) => 1 - Math.pow(1 - x, 3);
 const back = (x) => { const c = 1.7; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
 
-export function tommyAppears(canvas, { onDone = () => {} } = {}) {
+export function tommyAppears(canvas, { onDone = () => {}, calm = false } = {}) {
+  // calm: the computer asks for less motion (e.g. Windows "Animation effects" off) -> he fades in and sits still
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -58,17 +59,18 @@ export function tommyAppears(canvas, { onDone = () => {} } = {}) {
       raf = requestAnimationFrame(tick);
       if (last) t += Math.min((now - last) / 1000, 1 / 30); last = now;
       const up = t < 0.7 ? back(t / 0.7) : t > D - 0.6 ? 1 - ease((t - (D - 0.6)) / 0.6) : 1;
-      rig.position.y = -1.8 * (1 - up);
+      rig.position.y = calm ? 0 : -1.8 * (1 - up);
+      canvas.style.opacity = calm ? String(Math.max(0, Math.min(1, t / 0.4, (D - t) / 0.4))) : "1";
       // turns to look at you, then back to three-quarters
-      const look = t > 0.9 && t < 3.3 ? Math.sin((t - 0.9) / 2.4 * Math.PI) : 0;
+      const look = calm ? 0 : t > 0.9 && t < 3.3 ? Math.sin((t - 0.9) / 2.4 * Math.PI) : 0;
       rig.rotation.y = -0.45 + look * 0.4 + Math.sin(t * 0.6) * 0.05;
-      rig.rotation.z = Math.sin(t * 1.4) * 0.025;
+      rig.rotation.z = calm ? 0 : Math.sin(t * 1.4) * 0.025;
       glow.material.opacity = 0.1 * Math.max(0, up);
       // a slow cat blink (that's a cat saying "I like you")
-      const blink = t > 2.0 && t < 2.9 ? Math.sin((t - 2.0) / 0.9 * Math.PI) : 0;
+      const blink = calm ? 0 : t > 2.0 && t < 2.9 ? Math.sin((t - 2.0) / 0.9 * Math.PI) : 0;
       lids.forEach((l) => turn(l, X, blink * 0.75));
       // tips his hat
-      const tip = t > 3.5 && t < 4.7 ? Math.sin((t - 3.5) / 1.2 * Math.PI) : 0;
+      const tip = calm ? 0 : t > 3.5 && t < 4.7 ? Math.sin((t - 3.5) / 1.2 * Math.PI) : 0;
       if (hat) { turn(hat, Z, tip * 0.35); hat.position.y = hat.userData.y0 ?? (hat.userData.y0 = hat.position.y); hat.position.y = hat.userData.y0 + tip * 0.05; }
       renderer.render(scene, camera);
       if (t >= D) { stop(); onDone(); }
