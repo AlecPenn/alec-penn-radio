@@ -243,6 +243,11 @@ function ArchiveRadio({ playing, channel, volume, onTrack, onProgress }) {
     window._aprSkip=()=>{ const info=infoRef.current; if(!info||!playingRef.current) return;
       const a=audioRef.current; const left=(info.track.s)-(a?.currentTime||info.offset);
       skewRef.current+=Math.max(0,left)+0.1; tune(); };
+    // spinning the record by hand bends the song like real vinyl: drag slow and it drags, flick it and it races
+    window._aprScratch=(v)=>{ const a=audioRef.current; if(!a||!playingRef.current) return;
+      try{ a.preservesPitch=false; a.mozPreservesPitch=false; a.webkitPreservesPitch=false; }catch(e){}
+      if(v===null){ a.playbackRate=1; return; }
+      a.playbackRate=Math.max(0.25,Math.min(2.5,Math.abs(v)/3.49||0.25)); };
   },[tune]);
 
   return null;
@@ -522,7 +527,7 @@ function Turntable({ playing, cover, glow, progress, mobile, height }) {
     if(failed) return; let alive=true;
     import("./turntable.js").then(m=>{
       if(!alive||!canvasRef.current) return;
-      try{ ttRef.current=m.createTurntable(canvasRef.current,{ mobile, getBass });
+      try{ ttRef.current=m.createTurntable(canvasRef.current,{ mobile, getBass, onScratch:(v)=>window._aprScratch?.(v) });
         ttRef.current.setGlow(glow); ttRef.current.setPlaying(playing); if(cover) ttRef.current.setCover(cover);
       }catch(e){ console.error(e); setFailed(true); }
     }).catch(()=>setFailed(true));
@@ -533,7 +538,7 @@ function Turntable({ playing, cover, glow, progress, mobile, height }) {
   useEffect(()=>{ ttRef.current?.setGlow(glow); },[glow]);
   useEffect(()=>{ ttRef.current?.setProgress(progress); },[progress]);
   if(failed) return null;
-  return <canvas ref={canvasRef} aria-label="Record player showing the song that's playing" style={{ display:"block",width:"100%",height,touchAction:"pan-y" }}/>;
+  return <canvas ref={canvasRef} aria-label="Record player showing the song that's playing. Drag the record to spin it." style={{ display:"block",width:"100%",height,touchAction:"pan-y" }}/>;
 }
 
 /* ── OSCILLOSCOPE (real waveform when available) ── */

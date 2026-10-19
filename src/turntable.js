@@ -43,7 +43,7 @@ function glowTexture() {
   return new THREE.CanvasTexture(c);
 }
 
-export function createTurntable(canvas, { mobile = false, getBass = () => 0 } = {}) {
+export function createTurntable(canvas, { mobile = false, getBass = () => 0, onScratch = null } = {}) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -163,13 +163,47 @@ export function createTurntable(canvas, { mobile = false, getBass = () => 0 } = 
   const onMove = (e) => { const r = canvas.getBoundingClientRect(); pointer.x = ((e.clientX - r.left) / r.width - 0.5); pointer.y = ((e.clientY - r.top) / r.height - 0.5); };
   if (!mobile) window.addEventListener("pointermove", onMove);
 
+  // ── spin the record with a finger or the mouse: grab it, drag it around, flick it and let go ──
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const hit = new THREE.Vector3(), centre = new THREE.Vector3();
+  let grab = null;   // { angle, t, vel }
+  function recordAngle(e) {
+    const r = canvas.getBoundingClientRect();
+    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    spin.getWorldPosition(centre); plane.constant = -centre.y;
+    if (!ray.ray.intersectPlane(plane, hit)) return null;
+    const dx = hit.x - centre.x, dz = hit.z - centre.z, radius = 1.9 * deck.scale.x;
+    return { a: Math.atan2(dz, dx), inside: Math.hypot(dx, dz) < radius };
+  }
+  const onDown = (e) => {
+    const p = recordAngle(e); if (!p || !p.inside) return;
+    grab = { angle: p.a, t: performance.now(), vel: 0 };
+    canvas.setPointerCapture?.(e.pointerId); canvas.style.cursor = "grabbing"; loop();
+  };
+  const onDrag = (e) => {
+    if (!grab) { const p = recordAngle(e); canvas.style.cursor = p && p.inside ? "grab" : ""; return; }
+    const p = recordAngle(e); if (!p) return;
+    let d = p.a - grab.angle; if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI;
+    const now = performance.now(), dts = Math.max(0.008, (now - grab.t) / 1000);
+    spin.rotation.y -= d;                                  // the record follows your finger
+    grab.vel = grab.vel * 0.6 + (d / dts) * 0.4; grab.angle = p.a; grab.t = now;
+    onScratch && onScratch(d / dts);
+  };
+  const onUp = () => { if (!grab) return; speed = Math.max(-25, Math.min(25, grab.vel)); grab = null; canvas.style.cursor = ""; onScratch && onScratch(null); loop(); };
+  // on phones, a touch that starts on the record spins it instead of scrolling the page
+  const onTouch = (e) => { const t = e.touches[0]; const p = t && recordAngle(t); if (p && p.inside) e.preventDefault(); };
+  canvas.addEventListener("pointerdown", onDown); canvas.addEventListener("pointermove", onDrag);
+  canvas.addEventListener("pointerup", onUp); canvas.addEventListener("pointercancel", onUp);
+  canvas.addEventListener("touchstart", onTouch, { passive: false });
+
   let last = performance.now();
   function frame(now) {
     raf = 0;
     if (disposed || !visible || document.hidden) return;
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    speed += ((playing ? 3.49 : 0) - speed) * Math.min(1, dt * (playing ? 1.6 : 1.1)); // 33⅓ rpm, spins up / winds down
-    spin.rotation.y -= speed * dt;
+    if (!grab) speed += ((playing ? 3.49 : 0) - speed) * Math.min(1, dt * (Math.abs(speed) > 5 ? 0.9 : playing ? 1.6 : 1.1)); // 33⅓ rpm; a flick coasts, then settles
+    if (!grab) spin.rotation.y -= speed * dt;
     const target = playing ? PLAY_START + (PLAY_END - PLAY_START) * progress : REST;
     armY += (target - armY) * Math.min(1, dt * 2.2); arm.rotation.y = armY;
     arm.rotation.x = playing ? armTilt[0] : armTilt[1];
@@ -204,6 +238,7 @@ export function createTurntable(canvas, { mobile = false, getBass = () => 0 } = 
     dispose() {
       disposed = true; cancelAnimationFrame(raf); ro.disconnect(); io.disconnect();
       document.removeEventListener("visibilitychange", onVis); window.removeEventListener("pointermove", onMove);
+      canvas.removeEventListener("pointerdown", onDown); canvas.removeEventListener("pointermove", onDrag); canvas.removeEventListener("pointerup", onUp); canvas.removeEventListener("pointercancel", onUp); canvas.removeEventListener("touchstart", onTouch);
       renderer.dispose(); pmrem.dispose();
     },
   };
