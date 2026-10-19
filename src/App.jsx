@@ -628,7 +628,7 @@ function BroadcastTicker({ active, nowPlaying }) {
 }
 
 /* ── EASTER EGG DISPLAY ── */
-// Tommy in 3D (black cat, wizard hat) pops up in the bottom corner. Falls back to the emoji if 3D can't run.
+// Tommy in 3D (black cat, wizard hat) trots along the bottom of the screen. Falls back to the emoji if 3D can't run.
 function TommyCat({ onDone }){
   const ref=useRef(null); const [flat,setFlat]=useState(false);
   useEffect(()=>{
@@ -638,11 +638,11 @@ function TommyCat({ onDone }){
   },[]);
   useEffect(()=>{ if(!flat) return; const t=setTimeout(()=>onDone?.(),6500); return()=>clearTimeout(t); },[flat]);
   if(flat) return <div aria-hidden="true" style={{ position:"fixed",bottom:18,left:0,zIndex:499,fontSize:54,pointerEvents:"none",filter:"brightness(0) drop-shadow(0 0 6px #c2a24d)",animation:"cat-walk 6s linear forwards" }}>🐈</div>;
-  return <canvas ref={ref} aria-hidden="true" style={{ position:"fixed",right:0,bottom:0,width:"min(100vw,520px)",height:"min(62vh,440px)",zIndex:499,pointerEvents:"none" }}/>;
+  return <canvas ref={ref} aria-hidden="true" style={{ position:"fixed",left:0,bottom:0,width:"100vw",height:"min(34vh,280px)",zIndex:499,pointerEvents:"none" }}/>;
 }
 function EasterEggMsg({ egg, onClose }) {
   const { msg, playlist, fx }=egg;
-  useEffect(()=>{const t=setTimeout(onClose,playlist?9000:fx==="cat"?20000:6000);return()=>clearTimeout(t);},[]);
+  useEffect(()=>{const t=setTimeout(onClose,playlist?9000:fx==="cat"?30000:6000);return()=>clearTimeout(t);},[]);
   return (
     <>
     {fx==="cat"&&<TommyCat onDone={onClose}/>}
