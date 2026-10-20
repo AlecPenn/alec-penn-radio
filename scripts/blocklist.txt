@@ -21,3 +21,44 @@ title:Leave The Stars On
 title:We Made This Color
 title:Wet Paint
 title:Grass Is Green
+# The Alec Penn Experience: private, for later. Never on the station or Eden's Gate (any collection):
+title:3 Days Later
+title:5 Dimensional
+title:Alchemy
+title:Bribe The Ferryman
+title:Carousel
+title:Cause And Effect
+title:Dreamweaver
+title:Flick Of The Wand
+title:For My Next Trick
+title:God's Eye
+title:Grimoire
+title:Have It Your Way
+title:Her
+title:I'm The One
+title:Infinite
+title:Interdimensional
+title:Manifest
+title:Modern Day Wizard
+title:Nah
+title:No Fear, No End
+title:Nobody Saw Me Do It
+title:Pinocchio
+title:Player 1
+title:Problem Child
+title:Reincarnated
+title:Return To Sender
+title:The Alec Penn Experience
+title:The Awakened
+title:Timelines
+title:Tricky
+title:Trinity
+title:Unfolding
+title:Wonderland
+# Her Majesty songs that slipped into genre stations (Her Majesty gets its own station instead):
+alecpennradio-phonk/Dead Ego Walkin'.mp3
+alecpennradio-phonk/Mirror Ritual.mp3
+alecpennradio-phonk/Queen Of Nothing.mp3
+alecpennradio-youtube-shorts/Hellcats.mp3
+alecpennradio-youtube-shorts/Hello Kitty.mp3
+alecpennradio-youtube-shorts/Thorough.mp3
