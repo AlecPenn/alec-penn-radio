@@ -17,9 +17,12 @@ export async function loadStation() {
     ...c,
     tracks: c.tracks.map((t, i) => ({ ...t, ia: c.ia, genre: c.name, cover: `/covers/${c.slug}/${t.c ?? i}.webp`, key: `${c.slug}/${i}` })),
   }));
-  // "FULL STATION": every channel mixed together
-  // Separate stations (like The Revival Series) only play when picked — never in the mix.
-  const all = { slug: "all", name: "Full Station", tracks: channels.filter((c) => !c.separate).flatMap((c) => c.tracks) };
+  // "FULL STATION": every channel mixed together, special broadcasts included.
+  // A song that sits on two stations (e.g. a Revival song that was also a Short) plays once in the mix.
+  const seen = new Set(), norm = (t) => t.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const mix = [...channels.filter((c) => !c.separate), ...channels.filter((c) => c.separate)].flatMap((c) => c.tracks)
+    .filter((t) => { const k = norm(t.t); if (seen.has(k)) return false; seen.add(k); return true; });
+  const all = { slug: "all", name: "Full Station", tracks: mix };
   // station jingles: one plays between songs every few songs, at the same moment for every listener
   JINGLES = (raw.jingles || []).map((j, i) => ({ ...j, ia: "jingles", genre: "Station ID", cover: "/icons/icon-512.png", url: `/jingles/${j.f}`, key: `jingle/${i}`, jingle: true }));
   _data = { channels, all, total: all.tracks.length };
