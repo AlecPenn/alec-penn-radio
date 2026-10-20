@@ -8,3 +8,16 @@ alecpennradio-experimental-rap/Infinite.mp3
 alecpennradio-experimental-rap/Nobody Saw Me Do It.mp3
 # Retired to make it an even 1,111:
 alecpennradio-workout/Built In The Dark.mp3
+# Mushy Dimensions songs: a separate experience, never on the station or Eden's Gate (any collection):
+title:A Little Outside Of Time
+title:Borderless
+title:Getting Mushy
+title:Hearing Colors
+title:Liquid Shaped Dance
+title:Melting Into The Night
+title:Dimethyltryptamine
+title:Magic Carpet
+title:Leave The Stars On
+title:We Made This Color
+title:Wet Paint
+title:Grass Is Green

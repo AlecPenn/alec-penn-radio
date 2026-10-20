@@ -143,10 +143,11 @@ def main():
             else:
                 print(f"{ch['name']}: still uploading ({have_n}/{len(ch['tracks'])}), staying hidden")
                 continue
-        is_blocked = lambda name: f"{ch['ia']}/{name}" in block
+        titles = {x[6:].strip().lower() for x in block if x.startswith("title:")}
+        is_blocked = lambda name: f"{ch['ia']}/{name}" in block or nice_title(name).lower() in titles
         stats["blocked_on_ia"] += sum(1 for n in originals if is_blocked(n))
 
-        gone = [t for t in ch["tracks"] if t["f"] not in on_ia or is_blocked(t["f"])]
+        gone = [t for t in ch["tracks"] if t["f"] not in on_ia or is_blocked(t["f"]) or t["t"].lower() in titles]
         if gone and len(gone) <= MAX_REMOVE:
             for t in gone:
                 print(f"{ch['name']}: removing {t['f']}")
