@@ -835,7 +835,7 @@ export default function AlecPennRadio() {
   const [menuOpen,setMenuOpen]=useState(false);
   const [nowPlaying,setNowPlaying]=useState(null);
   const [thumb,setThumb]=useState(null);
-  const [volume,setVolume]=useState(80);
+  const [volume,setVolume]=useState(100);
   const [easterEgg,setEasterEgg]=useState(null);
   const [keyBuffer,setKeyBuffer]=useState("");
   const konami=useRef([]);

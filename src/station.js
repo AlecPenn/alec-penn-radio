@@ -109,9 +109,10 @@ export function audioUrl(track) {
 }
 
 // Turn the per-song loudness correction (dB) into a volume multiplier.
-// 3 dB of headroom lets quiet songs come up a little.
+// Most songs play at full volume; only the extra-loud ones are eased down to match.
+// (A web page can't push a song above its natural level, so we never turn the normal ones down.)
 export function gainMul(track) {
-  return Math.pow(10, ((track.g || 0) - 3) / 20);
+  return Math.min(1, Math.pow(10, ((track.g || 0) + 1.5) / 20));
 }
 
 // Everything scheduled on this channel from `now` for the next `seconds` (for saving ahead).
