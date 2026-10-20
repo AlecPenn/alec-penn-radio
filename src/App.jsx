@@ -64,7 +64,7 @@ const STYLE = {
   "Synthwave":         { glow:"#C49AAA", mood:"neon" },
   "Workout":           { glow:"#D4B96A", mood:"full send" },
   "The Revival Series":{ glow:"#EBD9A0", mood:"uplifted" },
-  "YouTube Shorts":{ glow:"#FF5A6E", mood:"quick hits" },
+  "Shorts":{ glow:"#FF5A6E", mood:"quick hits" },
   "Her Majesty":{ glow:"#FF4FA3", mood:"royalty" },
 };
 const styleOf = (name) => STYLE[name] || { glow:"#C2A24D", mood:"on air" };
@@ -980,6 +980,11 @@ export default function AlecPennRadio() {
         .theme-skyline h1,.theme-skyline h2[style*="Bebas"]{background:linear-gradient(90deg,#FFB86B,#FF9DD6 45%,#C08BFF 75%,#8ED1FF);-webkit-background-clip:text;background-clip:text;color:transparent!important;}
         .theme-neon h1,.theme-neon h2,.theme-neon [style*="Bebas Neue"]:not(button){text-shadow:0 0 6px currentColor,0 0 20px currentColor;}
         .theme-neon button{box-shadow:0 0 12px rgba(255,43,214,0.28);}
+        .sb-revival{position:relative;overflow:hidden;background:linear-gradient(180deg,#FFFFFF,#FFF6DE 55%,#F3E3B0)!important;}
+        .sb-revival::after{content:"";position:absolute;top:0;bottom:0;left:-60%;width:45%;background:linear-gradient(105deg,transparent,rgba(255,255,255,0.0) 20%,rgba(255,231,160,0.95) 50%,rgba(255,255,255,0) 80%,transparent);transform:skewX(-18deg);animation:sb-shine 3.2s ease-in-out infinite;pointer-events:none;}
+        @keyframes sb-shine{0%{left:-60%}55%,100%{left:130%}}
+        .sb-her-majesty{transform:rotate(-1deg);}
+        @media (prefers-reduced-motion: reduce){.sb-revival::after{animation:none;}}
         .theme-graffiti h1,.theme-graffiti h2{font-family:'Permanent Marker',cursive!important;letter-spacing:0.02em!important;text-shadow:4px 4px 0 #000,-1px -1px 0 #000;transform:rotate(-2deg);}
         .theme-graffiti h1{color:#FFE600!important;}
         .theme-static h1{font-family:'Special Elite','Courier New',monospace!important;background:#FBF3EA;color:#2a1c21!important;padding:6px 14px;display:inline-block;transform:rotate(-1.5deg);box-shadow:4px 4px 0 rgba(0,0,0,0.35);letter-spacing:0.02em!important;}
@@ -1210,10 +1215,18 @@ export default function AlecPennRadio() {
                 <div style={{ marginTop:14 }}>
                   <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:9,color:C.sageTeal,letterSpacing:"0.18em",marginBottom:6 }}>SPECIAL BROADCASTS</div>
                   <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
-                    {GENRES.filter(g=>g.separate).map(g=>(
-                      <button key={g.name} onClick={()=>handleGenre(g)}
-                        style={{ background:genre===g.name?g.glow:`${C.deepBurgundy}88`,border:`1px solid ${genre===g.name?g.glow:C.roseMaroon}`,color:genre===g.name?C.black:C.paleGold,padding:mobile?"14px 16px":"8px 18px",width:mobile?"100%":undefined,minHeight:mobile?50:undefined,borderRadius:mobile?6:4,fontSize:mobile?20:11,letterSpacing:"0.1em",textTransform:"uppercase",cursor:"pointer",transition:"all 0.2s",fontFamily:"'Bebas Neue',sans-serif",fontWeight:400 }}>★ {g.name}</button>
-                    ))}
+                    {GENRES.filter(g=>g.separate).map(g=>{
+                      const on=genre===g.name;
+                      const base={ padding:mobile?"14px 16px":"8px 18px",width:mobile?"100%":undefined,minHeight:mobile?50:undefined,borderRadius:mobile?6:4,fontSize:mobile?20:11,letterSpacing:"0.1em",textTransform:"uppercase",cursor:"pointer",transition:"all 0.2s",fontFamily:"'Bebas Neue',sans-serif",fontWeight:400 };
+                      // each special broadcast has its own look
+                      const look=g.slug==="her-majesty"
+                        ? { background:on?"#FF2E93":"#FF4FA3",border:`2px solid ${on?"#FFFFFF":"#FF8CC6"}`,color:"#FFFFFF",fontFamily:"'Permanent Marker',cursive",fontSize:mobile?22:14,letterSpacing:"0.04em",textTransform:"none",textShadow:"2px 2px 0 #0A0509, -1px -1px 0 #0A0509",boxShadow:on?"0 0 22px #FF4FA3cc":"0 0 10px #FF4FA355" }
+                        : g.slug==="revival"
+                        ? { color:"#9A6F12",border:`1px solid ${on?"#FFFFFF":"#F3E3B0"}`,boxShadow:on?"0 0 26px #FFFFFFcc, 0 0 10px #EBD9A0":"0 0 14px #FFFFFF66" }
+                        : { background:on?C.gold:"transparent",border:`1px solid ${on?C.gold:C.deepGold+"66"}`,color:on?C.black:C.warmGold };   // SHORTS follows the vibe you picked
+                      const label=g.slug==="youtube-shorts"?"Shorts":g.name;
+                      return <button key={g.name} onClick={()=>handleGenre(g)} className={`sb sb-${g.slug}${on?" on":""}`} style={{ ...base,...look }}>{g.slug==="her-majesty"?"♛ ":"★ "}{label}</button>;
+                    })}
                   </div>
                 </div>
               )}
