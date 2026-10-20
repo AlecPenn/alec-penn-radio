@@ -20,6 +20,8 @@ export async function loadStation() {
   // "FULL STATION": every channel mixed together
   // Separate stations (like The Revival Series) only play when picked — never in the mix.
   const all = { slug: "all", name: "Full Station", tracks: channels.filter((c) => !c.separate).flatMap((c) => c.tracks) };
+  // station jingles: one plays between songs every few songs, at the same moment for every listener
+  JINGLES = (raw.jingles || []).map((j, i) => ({ ...j, ia: "jingles", genre: "Station ID", cover: "/icons/icon-512.png", url: `/jingles/${j.f}`, key: `jingle/${i}`, jingle: true }));
   _data = { channels, all, total: all.tracks.length };
   return _data;
 }
@@ -43,7 +45,18 @@ function order(channel, cycle) {
   for (let i = idx.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; }
   return idx;
 }
+let JINGLES = [];
+const JINGLE_EVERY = 4;   // a jingle after every 4th song
 const cache = new Map();
+// which jingle plays in each jingle slot of a cycle (never the same one twice in a row)
+function jinglesFor(channel, cycle, slots) {
+  const pool = channel.jingles || JINGLES;
+  if (!pool.length || !slots) return [];
+  const r = rng(hashStr(channel.slug + "/jingle") + cycle * 104729), out = [];
+  for (let i = 0; i < slots; i++) { let j = Math.floor(r() * pool.length); if (pool.length > 1 && out.length && j === out[out.length - 1]) j = (j + 1) % pool.length; out.push(j); }
+  return out.map((j) => pool[j]);
+}
+const slotsOf = (channel) => Math.floor(Math.max(0, channel.tracks.length - 1) / JINGLE_EVERY);
 function cycleInfo(channel, cycle) {
   const k = channel.slug + ":" + cycle;
   if (!cache.has(k)) {
@@ -52,31 +65,46 @@ function cycleInfo(channel, cycle) {
       const prev = order(channel, cycle - 1);
       if (o[0] === prev[prev.length - 1]) [o[0], o[1]] = [o[1], o[0]];
     }
+    // the running order: songs, with a jingle after every JINGLE_EVERY songs
+    const js = jinglesFor(channel, cycle, slotsOf(channel));
+    const seq = [];
+    let used = 0;
+    o.forEach((i, n) => { seq.push(channel.tracks[i]); if ((n + 1) % JINGLE_EVERY === 0 && used < js.length) seq.push(js[used++]); });
     const starts = []; let acc = 0;
-    for (const i of o) { starts.push(acc); acc += channel.tracks[i].s; }
-    cache.set(k, { o, starts });
+    for (const t of seq) { starts.push(acc); acc += t.s; }
+    cache.set(k, { o, seq, starts, len: acc });
     if (cache.size > 40) cache.delete(cache.keys().next().value);
   }
   return cache.get(k);
 }
-const total = (ch) => ch._len || (ch._len = ch.tracks.reduce((a, t) => a + t.s, 0));
+const songsLen = (ch) => ch._len || (ch._len = ch.tracks.reduce((a, t) => a + t.s, 0));
+// a cycle's length depends on which jingles it got, so walk the cycles from day one (cached per channel)
+function locate(channel, t) {
+  const pool = channel.jingles || JINGLES;
+  if (!pool.length) { const L = songsLen(channel), c = Math.floor(t / L); return { cycle: c, pos: t - c * L }; }
+  const st = channel._cyc || (channel._cyc = { starts: [0] });
+  const lenOf = (c) => songsLen(channel) + jinglesFor(channel, c, slotsOf(channel)).reduce((a, j) => a + j.s, 0);
+  if (t < 0) return { cycle: 0, pos: 0 };
+  while (st.starts[st.starts.length - 1] + lenOf(st.starts.length - 1) <= t) st.starts.push(st.starts[st.starts.length - 1] + lenOf(st.starts.length - 1));
+  let lo = 0, hi = st.starts.length - 1;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (st.starts[mid] <= t) lo = mid; else hi = mid - 1; }
+  return { cycle: lo, pos: t - st.starts[lo] };
+}
 
 // What's on air on this channel at time `now` (seconds)?
 export function onAir(channel, now = Date.now() / 1000) {
-  const L = total(channel);
-  const t = now - EPOCH;
-  const cycle = Math.floor(t / L);
-  const pos = t - cycle * L;
-  const { o, starts } = cycleInfo(channel, cycle);
-  let lo = 0, hi = o.length - 1;
+  const { cycle, pos } = locate(channel, now - EPOCH);
+  const { seq, starts } = cycleInfo(channel, cycle);
+  let lo = 0, hi = seq.length - 1;
   while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (starts[mid] <= pos) lo = mid; else hi = mid - 1; }
-  const track = channel.tracks[o[lo]];
+  const track = seq[lo];
   const offset = pos - starts[lo];
-  const nextIdx = lo + 1 < o.length ? o[lo + 1] : cycleInfo(channel, cycle + 1).o[0];
-  return { track, offset, remaining: track.s - offset, next: channel.tracks[nextIdx] };
+  const next = lo + 1 < seq.length ? seq[lo + 1] : cycleInfo(channel, cycle + 1).seq[0];
+  return { track, offset, remaining: track.s - offset, next };
 }
 
 export function audioUrl(track) {
+  if (track.url) return track.url;   // jingles live on the site itself
   return `${AUDIO_BASE}/${track.ia}/${encodeURIComponent(track.f)}`;
 }
 
@@ -91,7 +119,7 @@ export function upcoming(channel, now, seconds) {
   const out = []; let t = now; const end = now + seconds; let guard = 0;
   while (t < end && guard++ < 3000) {
     const info = onAir(channel, t);
-    out.push({ track: info.track, start: t - info.offset });
+    if (!info.track.jingle) out.push({ track: info.track, start: t - info.offset });   // jingles aren't saved for offline
     t += info.remaining + 0.01;
   }
   return out;
@@ -102,7 +130,7 @@ export function offlineCoverage(channel, has, now = Date.now() / 1000, limit = 7
   let t = now, guard = 0;
   while (t < now + limit && guard++ < 20000) {
     const info = onAir(channel, t);
-    if (!has(info.track)) return t - now;
+    if (!info.track.jingle && !has(info.track)) return t - now;
     t += info.remaining + 0.01;
   }
   return limit;

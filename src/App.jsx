@@ -1134,7 +1134,7 @@ export default function AlecPennRadio() {
                 AI co-created. Multi-genre. Free for everyone.
               </p>
 
-              {mobile&&<div style={{ margin:"0 -16px 14px" }}><Turntable playing={tuned} cover={thumb} glow={activeGlow} progress={progress[1]?progress[0]/progress[1]:0} mobile={true} height={250} song={onAirInfo?{ t:onAirInfo.track.t, station:onAirInfo.track.genre||genre, cover:onAirInfo.track.cover||thumb }:null}/></div>}
+              {mobile&&<div style={{ margin:"0 -16px 14px" }}><Turntable playing={tuned} cover={thumb} glow={activeGlow} progress={progress[1]?progress[0]/progress[1]:0} mobile={true} height={250} song={onAirInfo&&!onAirInfo.track.jingle?{ t:onAirInfo.track.t, station:onAirInfo.track.genre||genre, cover:onAirInfo.track.cover||thumb }:null}/></div>}
 
               {/* Freq + oscilloscope + album art */}
               <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:20,flexWrap:"wrap" }}>
@@ -1188,10 +1188,10 @@ export default function AlecPennRadio() {
                     <span>{fmtTime(progress[0])} / {fmtTime(progress[1])}</span>
                     <span style={{ color:C.mistTeal,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"65%" }}>UP NEXT · {onAirInfo.next.t}</span>
                   </div>
-                  <a href={`https://edensgate.art/?q=${encodeURIComponent(onAirInfo.track.t)}`} target="_blank" rel="noreferrer"
+                  {!onAirInfo.track.jingle&&<a href={`https://edensgate.art/?q=${encodeURIComponent(onAirInfo.track.t)}`} target="_blank" rel="noreferrer"
                     style={{ display:"inline-block",marginTop:8,fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:9,letterSpacing:"0.12em",color:C.paleGold,textDecoration:"none",borderBottom:`1px solid ${C.deepGold}66`,paddingBottom:1 }}>
                     ↓ DOWNLOAD THIS SONG FREE AT EDEN'S GATE
-                  </a>
+                  </a>}
                 </div>
               )}
               {tuned&&!onAirInfo&&(
@@ -1236,7 +1236,7 @@ export default function AlecPennRadio() {
             <div style={{ display:"flex",flexDirection:mobile?"row":"column",alignItems:"center",gap:mobile?16:20,justifyContent:mobile?"space-between":"center",flexWrap:mobile?"wrap":"nowrap" }}>
               {!mobile&&(
                 <div style={{ width:420,display:"flex",flexDirection:"column",alignItems:"center",gap:6 }}>
-                  <Turntable playing={tuned} cover={thumb} glow={activeGlow} progress={progress[1]?progress[0]/progress[1]:0} mobile={false} height={330} song={onAirInfo?{ t:onAirInfo.track.t, station:onAirInfo.track.genre||genre, cover:onAirInfo.track.cover||thumb }:null}/>
+                  <Turntable playing={tuned} cover={thumb} glow={activeGlow} progress={progress[1]?progress[0]/progress[1]:0} mobile={false} height={330} song={onAirInfo&&!onAirInfo.track.jingle?{ t:onAirInfo.track.t, station:onAirInfo.track.genre||genre, cover:onAirInfo.track.cover||thumb }:null}/>
                   <div style={{ display:"flex",gap:18,alignItems:"baseline",fontFamily:"'JetBrains Mono',monospace" }}>
                     <span style={{ fontSize:18,color:C.gold }}>{station?station.total.toLocaleString():"—"}</span>
                     <span style={{ fontSize:mobile?11:9,color:C.sageTeal,letterSpacing:"0.14em" }}>TRACKS ON AIR</span>
