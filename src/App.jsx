@@ -65,6 +65,7 @@ const STYLE = {
   "Workout":           { glow:"#D4B96A", mood:"full send" },
   "The Revival Series":{ glow:"#EBD9A0", mood:"uplifted" },
   "YouTube Shorts":{ glow:"#FF5A6E", mood:"quick hits" },
+  "Her Majesty":{ glow:"#FF4FA3", mood:"royalty" },
 };
 const styleOf = (name) => STYLE[name] || { glow:"#C2A24D", mood:"on air" };
 let GENRES = [{ name:"Full Station", slug:"all", ...styleOf("Full Station") }];
