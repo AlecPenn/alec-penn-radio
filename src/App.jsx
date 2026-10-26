@@ -42,6 +42,7 @@ let C = THEMES.classic.c;
 const readTheme=()=>{ try{ const t=localStorage.getItem("aprTheme"); return THEMES[t]?t:"classic"; }catch(e){ return "classic"; } };
 
 const YT = "https://www.youtube.com/@AlecPennRadio";
+const YT_LIVE = "https://www.youtube.com/channel/UCOl7ftt1QeYJW8HREtlr5qA/live";   // always opens whatever broadcast is live now
 
 // Channel look + feel. Songs come from /station.json (built from the APR MP3s library).
 const STYLE = {
@@ -980,6 +981,11 @@ export default function AlecPennRadio() {
         .theme-skyline h1,.theme-skyline h2[style*="Bebas"]{background:linear-gradient(90deg,#FFB86B,#FF9DD6 45%,#C08BFF 75%,#8ED1FF);-webkit-background-clip:text;background-clip:text;color:transparent!important;}
         .theme-neon h1,.theme-neon h2,.theme-neon [style*="Bebas Neue"]:not(button){text-shadow:0 0 6px currentColor,0 0 20px currentColor;}
         .theme-neon button{box-shadow:0 0 12px rgba(255,43,214,0.28);}
+        .apr-live{animation:apr-live-glow 2.4s ease-in-out infinite;}
+        .apr-live-dot{width:9px;height:9px;border-radius:50%;background:#FF3B4E;box-shadow:0 0 8px #FF3B4E;flex:none;animation:apr-live-dot 1.2s ease-in-out infinite;}
+        @keyframes apr-live-glow{0%,100%{box-shadow:0 0 6px #E0566A44}50%{box-shadow:0 0 22px #E0566Aaa}}
+        @keyframes apr-live-dot{0%,100%{opacity:1}50%{opacity:.35}}
+        @media (prefers-reduced-motion: reduce){.apr-live,.apr-live-dot{animation:none;}}
         .sb-revival{position:relative;overflow:hidden;background:linear-gradient(180deg,#FFFFFF,#FFF6DE 55%,#F3E3B0)!important;}
         .sb-revival::after{content:"";position:absolute;top:0;bottom:0;left:-60%;width:45%;background:linear-gradient(105deg,transparent,rgba(255,255,255,0.0) 20%,rgba(255,231,160,0.95) 50%,rgba(255,255,255,0) 80%,transparent);transform:skewX(-18deg);animation:sb-shine 3.2s ease-in-out infinite;pointer-events:none;}
         @keyframes sb-shine{0%{left:-60%}55%,100%{left:130%}}
@@ -1049,6 +1055,7 @@ export default function AlecPennRadio() {
               <a href="#mission" className="nav-link">Mission</a>
               {tuned&&<button onClick={()=>window._aprSkip?.()} style={{ background:"transparent",border:`1px solid ${C.deepGold}44`,color:C.warmGold,padding:"4px 10px",borderRadius:4,fontSize:11,cursor:"pointer",fontFamily:"'JetBrains Mono',monospace",letterSpacing:"0.08em" }}>⏭ SKIP</button>}
               {tuned&&<button onClick={shareStation} style={{ background:"transparent",border:`1px solid ${C.sageTeal}66`,color:C.sageTeal,padding:"4px 10px",borderRadius:4,fontSize:11,cursor:"pointer",fontFamily:"'JetBrains Mono',monospace",letterSpacing:"0.08em" }}>↗ SHARE</button>}
+              <a href={YT_LIVE} target="_blank" rel="noreferrer" className="apr-live" title="Watch Alec Penn Radio live on YouTube, 24/7" style={{ display:"inline-flex",alignItems:"center",gap:7,background:"#2a070c",color:"#FFE3E7",padding:"5px 12px",borderRadius:4,fontSize:11,letterSpacing:"0.12em",textDecoration:"none",fontFamily:"'JetBrains Mono',monospace",border:"1px solid #E0566A" }}><span className="apr-live-dot"/>LIVE</a>
               <a href={YT} target="_blank" rel="noreferrer" style={{ background:C.burgundy,color:C.cream,padding:"5px 14px",borderRadius:4,fontSize:11,letterSpacing:"0.08em",textDecoration:"none",textTransform:"uppercase",fontFamily:"'JetBrains Mono',monospace",border:`1px solid ${C.roseMaroon}` }}>YouTube ↗</a>
               <div style={{ display:"flex",gap:0,marginLeft:4 }}>
                 {[{l:"─"},{l:"□"},{l:"✕"}].map((b,i)=>(
@@ -1264,6 +1271,12 @@ export default function AlecPennRadio() {
                   <div style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?10:8,color:C.sageTeal }}>TRACKS ON AIR</div>
                 </div>
               )}
+              <a href={YT_LIVE} target="_blank" rel="noreferrer" className="apr-live"
+                style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:10,width:"100%",boxSizing:"border-box",textDecoration:"none",background:"linear-gradient(135deg,#3a0a10,#14060a)",border:"1px solid #E0566A",borderRadius:8,padding:mobile?"12px 16px":"12px 20px" }}>
+                <span className="apr-live-dot"/>
+                <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:mobile?17:18,color:"#FFE3E7",letterSpacing:"0.15em" }}>LIVE ON YOUTUBE · 24/7</span>
+                <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:mobile?11:9,color:"#F2A3AE" }}>↗</span>
+              </a>
               <a href="https://edensgate.art" target="_blank" rel="noreferrer"
                 style={{ display:"block",width:"100%",textDecoration:"none",background:`linear-gradient(135deg,${C.deepBurgundy},${C.burgundy})`,border:`1px solid ${C.roseMaroon}`,borderRadius:8,padding:mobile?"12px 16px":"14px 20px",textAlign:"center",boxShadow:`0 4px 22px ${C.deepBurgundy}66`,transition:"box-shadow 0.2s" }}
                 onMouseEnter={e=>e.currentTarget.style.boxShadow=`0 8px 32px ${C.burgundy}88`}
